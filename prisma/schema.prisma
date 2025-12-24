@@ -1,0 +1,159 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Configuración de seed
+// Ejecutar con: npm run prisma:seed
+
+enum Rol {
+  ADMINISTRADOR
+  SECRETARIA
+  MEDICO
+}
+
+enum EstadoAtencion {
+  EN_ESPERA
+  ATENDIENDO
+  FINALIZADO
+}
+
+enum TipoPago {
+  EFECTIVO
+  TRANSFERENCIA
+}
+
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  rol       Rol
+  nombre    String
+  apellido  String
+  activo    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relación con Médico (opcional, solo si el usuario es médico)
+  medico Medico?
+
+  @@map("usuarios")
+}
+
+model Medico {
+  id            Int      @id @default(autoincrement())
+  usuarioId     Int      @unique
+  matricula     String   @unique
+  especialidad  String?
+  activo        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  usuario   Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  atenciones Atencion[]
+  historias  HistoriaClinica[]
+
+  @@map("medicos")
+}
+
+model Paciente {
+  id              Int      @id @default(autoincrement())
+  dni             String   @unique
+  apellido        String
+  nombre          String
+  fechaNacimiento DateTime?
+  telefono        String?
+  email           String?
+  direccion       String?
+  obraSocial      String
+  numeroAfiliado  String?
+  activo          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  atenciones      Atencion[]
+  historias       HistoriaClinica[]
+  pagos           Pago[]
+
+  @@map("pacientes")
+}
+
+model Atencion {
+  id            Int            @id @default(autoincrement())
+  pacienteId    Int
+  medicoId      Int
+  estado        EstadoAtencion @default(EN_ESPERA)
+  horaIngreso   DateTime       @default(now())
+  horaAtencion  DateTime?
+  observaciones String?        @db.Text
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  paciente Paciente        @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  medico   Medico          @relation(fields: [medicoId], references: [id], onDelete: Cascade)
+  historia HistoriaClinica?
+
+  @@index([estado])
+  @@index([medicoId, estado])
+  @@index([horaIngreso])
+  @@map("atenciones")
+}
+
+model HistoriaClinica {
+  id                Int       @id @default(autoincrement())
+  atencionId        Int       @unique
+  pacienteId        Int
+  medicoId          Int
+  fechaConsulta     DateTime  @default(now())
+  motivoConsulta    String?   @db.Text
+  sintomas          String?   @db.Text
+  diagnostico       String?   @db.Text
+  tratamiento       String?   @db.Text
+  observaciones     String?   @db.Text
+  presionArterial   String?
+  temperatura       String?
+  peso              Float?
+  altura            Float?
+  proximoControl    DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  atencion Atencion @relation(fields: [atencionId], references: [id], onDelete: Cascade)
+  paciente Paciente @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  medico   Medico   @relation(fields: [medicoId], references: [id], onDelete: Cascade)
+  pagos    Pago[]
+
+  @@index([pacienteId])
+  @@index([medicoId])
+  @@index([fechaConsulta])
+  @@map("historias_clinicas")
+}
+
+model Pago {
+  id                Int       @id @default(autoincrement())
+  historiaClinicaId Int?
+  pacienteId        Int
+  monto             Float
+  tipoPago          TipoPago
+  fechaPago         DateTime  @default(now())
+  numeroComprobante String?
+  observaciones     String?   @db.Text
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  historiaClinica HistoriaClinica? @relation(fields: [historiaClinicaId], references: [id], onDelete: SetNull)
+  paciente        Paciente         @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+
+  @@index([pacienteId])
+  @@index([fechaPago])
+  @@index([historiaClinicaId])
+  @@map("pagos")
+}
+
