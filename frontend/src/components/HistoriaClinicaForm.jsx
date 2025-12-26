@@ -67,6 +67,69 @@ export default function HistoriaClinicaForm({ atencion, onClose, onSuccess }) {
     },
   })
 
+  // Función para calcular la edad (evitar problemas de zona horaria)
+  const calcularEdad = (fechaNacimiento) => {
+    if (!fechaNacimiento) return null
+    
+    const hoy = new Date()
+    
+    // Parsear la fecha manualmente para evitar problemas de zona horaria
+    let anio, mes, dia
+    if (typeof fechaNacimiento === 'string') {
+      const fechaPart = fechaNacimiento.split('T')[0]
+      const partes = fechaPart.split('-').map(Number)
+      anio = partes[0]
+      mes = partes[1] - 1 // Mes en JavaScript es 0-11
+      dia = partes[2]
+    } else {
+      const fecha = new Date(fechaNacimiento)
+      anio = fecha.getFullYear()
+      mes = fecha.getMonth()
+      dia = fecha.getDate()
+    }
+    
+    // Crear fecha de nacimiento en hora local
+    const nacimiento = new Date(anio, mes, dia)
+    
+    let edad = hoy.getFullYear() - nacimiento.getFullYear()
+    const mesDiff = hoy.getMonth() - nacimiento.getMonth()
+    
+    if (mesDiff < 0 || (mesDiff === 0 && hoy.getDate() < nacimiento.getDate())) {
+      edad--
+    }
+    
+    return edad
+  }
+
+  // Formatear fecha de nacimiento (evitar problemas de zona horaria)
+  const formatearFechaNacimiento = (fechaNacimiento) => {
+    if (!fechaNacimiento) return null
+    
+    // Si la fecha viene como string en formato ISO (YYYY-MM-DD), parsearla directamente
+    // sin usar new Date() para evitar problemas de zona horaria
+    if (typeof fechaNacimiento === 'string') {
+      // Si viene como "YYYY-MM-DD" o "YYYY-MM-DDTHH:mm:ss.sssZ"
+      const fechaPart = fechaNacimiento.split('T')[0] // Tomar solo la parte de la fecha
+      const [anio, mes, dia] = fechaPart.split('-').map(Number)
+      
+      // Crear fecha en hora local (no UTC) para evitar el desfase
+      const fecha = new Date(anio, mes - 1, dia)
+      return fecha.toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
+    }
+    
+    // Si ya es un objeto Date, formatearlo directamente
+    const fecha = new Date(fechaNacimiento)
+    return fecha.toLocaleDateString('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    })
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     
@@ -106,6 +169,56 @@ export default function HistoriaClinicaForm({ atencion, onClose, onSuccess }) {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-6">
+          {/* Datos del Paciente */}
+          <div className="bg-primary-50 border-2 border-primary-200 rounded-lg p-4 mb-4">
+            <h3 className="text-lg font-semibold text-primary-900 mb-3 flex items-center">
+              <Stethoscope className="w-5 h-5 mr-2" />
+              Datos del Paciente
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-1">Nombre</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {atencion.paciente?.nombre} {atencion.paciente?.apellido}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-1">Obra Social</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {atencion.paciente?.obraSocial || '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-1">Número de Afiliado</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {atencion.paciente?.numeroAfiliado || '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-1">Fecha de Nacimiento</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {atencion.paciente?.fechaNacimiento 
+                    ? formatearFechaNacimiento(atencion.paciente.fechaNacimiento)
+                    : '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-1">Edad</p>
+                <p className="text-sm font-semibold text-primary-700">
+                  {atencion.paciente?.fechaNacimiento 
+                    ? `${calcularEdad(atencion.paciente.fechaNacimiento)} ${calcularEdad(atencion.paciente.fechaNacimiento) === 1 ? 'año' : 'años'}`
+                    : '-'}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-600 mb-1">DNI</p>
+                <p className="text-sm font-semibold text-gray-900">
+                  {atencion.paciente?.dni || '-'}
+                </p>
+              </div>
+            </div>
+          </div>
+
           {/* Historial de Historias Clínicas del Paciente */}
           {Object.keys(historiasPorEspecialidad).length > 0 && (
             <div className="mb-6">

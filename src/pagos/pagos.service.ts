@@ -76,7 +76,7 @@ export class PagosService {
   }
 
   async findByPaciente(pacienteId: number) {
-    return this.prisma.pago.findMany({
+    const pagos = await this.prisma.pago.findMany({
       where: { pacienteId },
       include: {
         historiaClinica: {
@@ -93,6 +93,57 @@ export class PagosService {
         fechaPago: 'desc',
       },
     });
+
+    // Para pagos sin historia clínica, buscar el médico desde la Atencion más cercana
+    const pagosConMedico = await Promise.all(
+      pagos.map(async (pago) => {
+        // Si ya tiene médico desde historia clínica, retornar tal cual
+        if (pago.historiaClinica?.medico) {
+          return pago;
+        }
+
+        // Buscar la Atencion más cercana al momento del pago (dentro de 2 horas)
+        const fechaPago = new Date(pago.fechaPago);
+        const fechaDesde = new Date(fechaPago);
+        fechaDesde.setHours(fechaDesde.getHours() - 2);
+        const fechaHasta = new Date(fechaPago);
+        fechaHasta.setHours(fechaHasta.getHours() + 2);
+
+        const atencion = await this.prisma.atencion.findFirst({
+          where: {
+            pacienteId: pago.pacienteId,
+            horaIngreso: {
+              gte: fechaDesde,
+              lte: fechaHasta,
+            },
+          },
+          include: {
+            medico: {
+              include: {
+                usuario: true,
+              },
+            },
+          },
+          orderBy: {
+            horaIngreso: 'desc',
+          },
+        });
+
+        // Si se encuentra una atención, agregar el médico al pago
+        if (atencion?.medico) {
+          return {
+            ...pago,
+            atencion: {
+              medico: atencion.medico,
+            },
+          };
+        }
+
+        return pago;
+      }),
+    );
+
+    return pagosConMedico;
   }
 
   async search(searchDto: SearchPagoDto) {
@@ -120,7 +171,7 @@ export class PagosService {
       }
     }
 
-    return this.prisma.pago.findMany({
+    const pagos = await this.prisma.pago.findMany({
       where,
       include: {
         paciente: true,
@@ -139,6 +190,57 @@ export class PagosService {
       },
       take: 100,
     });
+
+    // Para pagos sin historia clínica, buscar el médico desde la Atencion más cercana
+    const pagosConMedico = await Promise.all(
+      pagos.map(async (pago) => {
+        // Si ya tiene médico desde historia clínica, retornar tal cual
+        if (pago.historiaClinica?.medico) {
+          return pago;
+        }
+
+        // Buscar la Atencion más cercana al momento del pago (dentro de 2 horas)
+        const fechaPago = new Date(pago.fechaPago);
+        const fechaDesde = new Date(fechaPago);
+        fechaDesde.setHours(fechaDesde.getHours() - 2);
+        const fechaHasta = new Date(fechaPago);
+        fechaHasta.setHours(fechaHasta.getHours() + 2);
+
+        const atencion = await this.prisma.atencion.findFirst({
+          where: {
+            pacienteId: pago.pacienteId,
+            horaIngreso: {
+              gte: fechaDesde,
+              lte: fechaHasta,
+            },
+          },
+          include: {
+            medico: {
+              include: {
+                usuario: true,
+              },
+            },
+          },
+          orderBy: {
+            horaIngreso: 'desc',
+          },
+        });
+
+        // Si se encuentra una atención, agregar el médico al pago
+        if (atencion?.medico) {
+          return {
+            ...pago,
+            atencion: {
+              medico: atencion.medico,
+            },
+          };
+        }
+
+        return pago;
+      }),
+    );
+
+    return pagosConMedico;
   }
 
   async findOne(id: number) {
@@ -392,8 +494,8 @@ export class PagosService {
       },
     });
 
-    // Si es administrador, agrupar por médico
-    if (user?.rol === 'ADMINISTRADOR') {
+    // Si es administrador o secretaria, agrupar por médico
+    if (user?.rol === 'ADMINISTRADOR' || user?.rol === 'SECRETARIA') {
       // Primero, necesitamos obtener información de médicos para pagos sin historia clínica
       // Buscar todas las atenciones del período para hacer match con pagos sin historia clínica
       const todasLasAtenciones = await this.prisma.atencion.findMany({

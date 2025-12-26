@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Body,
   Param,
   UseGuards,
@@ -63,6 +64,17 @@ export class AtencionesController {
     return [];
   }
 
+  /**
+   * Obtener todas las atenciones activas para la secretaria
+   * GET /atenciones/activas-secretaria
+   * IMPORTANTE: Esta ruta debe ir ANTES de @Get(':id') para evitar conflictos
+   */
+  @Get('activas-secretaria')
+  @Roles(Rol.SECRETARIA, Rol.ADMINISTRADOR)
+  async findActivasParaSecretaria() {
+    return this.atencionesService.findActivasParaSecretaria();
+  }
+
   @Get(':id')
   @Roles(Rol.MEDICO, Rol.ADMINISTRADOR, Rol.SECRETARIA)
   async findOne(@Param('id', ParseIntPipe) id: number) {
@@ -116,6 +128,30 @@ export class AtencionesController {
       ...createAtencionDto,
       medicoId,
     });
+  }
+
+  /**
+   * Cancelar una atención (sacar de sala de espera)
+   * DELETE /atenciones/:id
+   */
+  @Delete(':id')
+  @Roles(Rol.MEDICO, Rol.ADMINISTRADOR)
+  async cancelar(
+    @Param('id', ParseIntPipe) id: number,
+    @CurrentUser() user: any,
+  ) {
+    let medicoId: number;
+
+    if (user.rol === Rol.MEDICO) {
+      const medico = await this.getMedicoByUsuarioId(user.id);
+      medicoId = medico.id;
+    } else {
+      // Administrador: obtener médicoId de la atención
+      const atencion = await this.atencionesService.findOne(id);
+      medicoId = atencion.medicoId;
+    }
+
+    return this.atencionesService.cancelar(id, medicoId);
   }
 
   /**

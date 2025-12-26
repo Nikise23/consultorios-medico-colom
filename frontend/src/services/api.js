@@ -41,8 +41,14 @@ export const getAtencion = (id) =>
 export const atenderPaciente = (id) => 
   api.patch(`/atenciones/${id}/atender`)
 
+export const cancelarAtencion = (id) => 
+  api.delete(`/atenciones/${id}`)
+
 export const crearNuevaConsulta = (data) => 
   api.post('/atenciones/nueva-consulta', data)
+
+export const getAtencionesActivasSecretaria = () => 
+  api.get('/atenciones/activas-secretaria')
 
 // Historias Clínicas
 export const createHistoriaClinica = (data) => 

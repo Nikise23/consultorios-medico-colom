@@ -24,7 +24,7 @@ export default function Layout() {
     <div className="min-h-screen bg-gray-50 flex flex-col relative">
       {/* Navbar */}
       <nav className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6">
+        <div className="max-w-7xl xl:max-w-[1400px] 2xl:max-w-[1600px] mx-auto px-2 sm:px-4 lg:px-6 xl:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center min-w-0 flex-1">
               <div className="flex-shrink-0 flex items-center">
@@ -155,13 +155,13 @@ export default function Layout() {
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8 flex-1">
+      <main className="max-w-7xl xl:max-w-[1400px] 2xl:max-w-[1600px] mx-auto py-4 sm:py-6 px-4 sm:px-6 lg:px-8 xl:px-12 flex-1">
         <Outlet />
       </main>
 
       {/* Footer */}
       <footer className="bg-white border-t-2 border-gray-300 mt-auto w-full shadow-sm z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl xl:max-w-[1400px] 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-2 text-sm text-gray-600">
             <div>
               <p className="text-primary-600 font-medium text-center sm:text-left">Consultorios Médicos Dres. Colom</p>

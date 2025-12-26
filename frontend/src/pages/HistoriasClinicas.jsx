@@ -6,6 +6,23 @@ import { useAuth } from '../contexts/AuthContext'
 import { searchHistoriasClinicas, getHistoriasByPaciente, getMedicos, crearNuevaConsulta, createHistoriaClinica, getProfile, searchPacientes } from '../services/api'
 import HistoriaClinicaForm from '../components/HistoriaClinicaForm'
 
+// Hook para debounce
+function useDebounce(value, delay) {
+  const [debouncedValue, setDebouncedValue] = useState(value)
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value)
+    }, delay)
+
+    return () => {
+      clearTimeout(handler)
+    }
+  }, [value, delay])
+
+  return debouncedValue
+}
+
 export default function HistoriasClinicas() {
   // Estado para controlar qué especialidades están expandidas
   const [especialidadesExpandidas, setEspecialidadesExpandidas] = useState({})
@@ -26,6 +43,10 @@ export default function HistoriasClinicas() {
   const [especialidad, setEspecialidad] = useState('')
   const [fechaDesde, setFechaDesde] = useState('')
   const [fechaHasta, setFechaHasta] = useState('')
+  
+  // Debounce para búsqueda en tiempo real (esperar 500ms después de que el usuario deje de escribir)
+  const dniFiltroDebounced = useDebounce(dniFiltro, 500)
+  const apellidoFiltroDebounced = useDebounce(apellidoFiltro, 500)
   
   const queryClient = useQueryClient()
 
@@ -100,20 +121,35 @@ export default function HistoriasClinicas() {
     enabled: !!selectedPaciente?.id,
   })
 
-  // Para búsqueda avanzada
-  const { data: historiasAvanzadas, isLoading: loadingAvanzadas } = useQuery({
-    queryKey: ['historias', 'avanzada', dniFiltro, apellidoFiltro, medicoId, especialidad, fechaDesde, fechaHasta],
-    queryFn: () => {
+  // Para búsqueda avanzada - usar valores con debounce para DNI y apellido
+  const { data: historiasAvanzadas, isLoading: loadingAvanzadas, error: errorAvanzadas } = useQuery({
+    queryKey: ['historias', 'avanzada', dniFiltroDebounced, apellidoFiltroDebounced, medicoId, especialidad, fechaDesde, fechaHasta],
+    queryFn: async () => {
       const params = {}
-      if (dniFiltro) params.dni = dniFiltro
-      if (apellidoFiltro) params.apellido = apellidoFiltro
+      if (dniFiltroDebounced && dniFiltroDebounced.trim()) params.dni = dniFiltroDebounced.trim()
+      if (apellidoFiltroDebounced && apellidoFiltroDebounced.trim()) params.apellido = apellidoFiltroDebounced.trim()
       if (medicoId) params.medicoId = parseInt(medicoId)
       if (especialidad) params.especialidad = especialidad
       if (fechaDesde) params.fechaDesde = fechaDesde
       if (fechaHasta) params.fechaHasta = fechaHasta
-      return searchHistoriasClinicas(params)
+      
+      console.log('🔍 Buscando historias clínicas con parámetros:', params)
+      const result = await searchHistoriasClinicas(params)
+      console.log('📋 Resultado de búsqueda:', result)
+      console.log('📋 Resultado.data:', result?.data)
+      console.log('📋 Resultado.data.data:', result?.data?.data)
+      
+      // Normalizar la respuesta: el backend retorna {data: [...]} y axios lo envuelve en {data: {data: [...]}}
+      return result
     },
-    enabled: searchType === 'filtros' && (!!dniFiltro || !!apellidoFiltro || !!medicoId || !!especialidad || !!fechaDesde || !!fechaHasta),
+    enabled: searchType === 'filtros' && (
+      (dniFiltroDebounced && dniFiltroDebounced.trim().length > 0) || 
+      (apellidoFiltroDebounced && apellidoFiltroDebounced.trim().length > 0) || 
+      !!medicoId || 
+      !!especialidad || 
+      !!fechaDesde || 
+      !!fechaHasta
+    ),
   })
 
   // Obtener perfil del usuario para saber si es médico
@@ -229,7 +265,14 @@ export default function HistoriasClinicas() {
   const historiasPorEspecialidad = useMemo(() => {
     // Para búsqueda por paciente, usar historias del paciente seleccionado
     // Para búsqueda avanzada, usar historiasAvanzadas
-    let historiasData = searchType === 'paciente' ? historias?.data : historiasAvanzadas?.data
+    let historiasData
+    
+    if (searchType === 'paciente') {
+      historiasData = historias?.data
+    } else {
+      // Normalizar la respuesta de búsqueda avanzada
+      historiasData = historiasAvanzadas?.data?.data || historiasAvanzadas?.data
+    }
     
     // Manejar estructura anidada de axios: {data: {data: [...]}}
     // El backend retorna {data: [...]} y axios lo envuelve en {data: {data: [...]}}
@@ -627,121 +670,142 @@ export default function HistoriasClinicas() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
               <p className="mt-4 text-gray-600">Buscando...</p>
             </div>
-          ) : historiasAvanzadas?.data?.length > 0 ? (
-        <div className="space-y-6">
-          {Object.entries(historiasPorEspecialidad).map(([especialidad, historiasEspecialidad]) => {
-            const isExpanded = especialidadesExpandidas[especialidad] ?? true // Por defecto expandido
-            return (
-              <div key={especialidad} className="card">
-                    <button
-                      onClick={() => {
-                        setEspecialidadesExpandidas(prev => ({
-                          ...prev,
-                          [especialidad]: !isExpanded
-                        }))
-                      }}
-                      className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200 w-full text-left hover:bg-gray-50 p-2 rounded transition-colors"
-                    >
-                      <Stethoscope className="w-5 h-5 text-primary-600" />
-                      <h2 className="text-xl font-semibold text-gray-900">{especialidad}</h2>
-                      <span className="text-sm text-gray-500">
-                        ({historiasEspecialidad.length} {historiasEspecialidad.length === 1 ? 'consulta' : 'consultas'})
-                      </span>
-                      {isExpanded ? (
-                        <ChevronUp className="w-5 h-5 text-gray-400 ml-auto" />
-                      ) : (
-                        <ChevronDown className="w-5 h-5 text-gray-400 ml-auto" />
+          ) : errorAvanzadas ? (
+            <div className="card text-center py-8 text-red-500">
+              <FileText className="w-12 h-12 mx-auto mb-4 text-red-400" />
+              <p>Error al buscar historias clínicas</p>
+              <p className="text-sm mt-2">{errorAvanzadas.message || 'Error desconocido'}</p>
+              <p className="text-xs mt-2 text-gray-500">
+                {errorAvanzadas.response?.data?.message || ''}
+              </p>
+            </div>
+          ) : (() => {
+            // Normalizar la respuesta: manejar estructura anidada de axios
+            const historiasData = historiasAvanzadas?.data?.data || historiasAvanzadas?.data
+            const historiasArray = Array.isArray(historiasData) ? historiasData : []
+            
+            console.log('📊 Historias normalizadas:', historiasArray)
+            console.log('📊 Cantidad de historias:', historiasArray.length)
+            
+            return historiasArray.length > 0 ? (
+              <div className="space-y-6">
+                {Object.entries(historiasPorEspecialidad).map(([especialidad, historiasEspecialidad]) => {
+                  const isExpanded = especialidadesExpandidas[especialidad] ?? true // Por defecto expandido
+                  return (
+                    <div key={especialidad} className="card">
+                      <button
+                        onClick={() => {
+                          setEspecialidadesExpandidas(prev => ({
+                            ...prev,
+                            [especialidad]: !isExpanded
+                          }))
+                        }}
+                        className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200 w-full text-left hover:bg-gray-50 p-2 rounded transition-colors"
+                      >
+                        <Stethoscope className="w-5 h-5 text-primary-600" />
+                        <h2 className="text-xl font-semibold text-gray-900">{especialidad}</h2>
+                        <span className="text-sm text-gray-500">
+                          ({historiasEspecialidad.length} {historiasEspecialidad.length === 1 ? 'consulta' : 'consultas'})
+                        </span>
+                        {isExpanded ? (
+                          <ChevronUp className="w-5 h-5 text-gray-400 ml-auto" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-gray-400 ml-auto" />
+                        )}
+                      </button>
+
+                      {isExpanded && (
+                        <div className="space-y-4">
+                          {historiasEspecialidad.map((historia) => (
+                            <div key={historia.id} className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors">
+                              <div className="flex justify-between items-start mb-3">
+                                <div>
+                                  {searchType !== 'paciente' && (
+                                    <>
+                                      <h3 className="text-lg font-semibold text-gray-900">
+                                        {historia.paciente?.nombre} {historia.paciente?.apellido}
+                                      </h3>
+                                      <p className="text-sm text-gray-500">
+                                        DNI: {historia.paciente?.dni}
+                                      </p>
+                                    </>
+                                  )}
+                                </div>
+                                <div className="text-right text-sm text-gray-500">
+                                  <div className="flex items-center">
+                                    <Calendar className="w-4 h-4 mr-1" />
+                                    {new Date(historia.fechaConsulta).toLocaleDateString('es-AR', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })}
+                                  </div>
+                                  <div className="flex items-center mt-1">
+                                    <User className="w-4 h-4 mr-1" />
+                                    Dr. {historia.medico?.usuario?.nombre} {historia.medico?.usuario?.apellido}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Mostrar contenido de la historia clínica */}
+                              <div className="mt-3 pt-3 border-t border-gray-100">
+                                {historia.observaciones ? (
+                                  <div>
+                                    <p className="font-medium text-gray-700 text-sm mb-2">Historia Clínica:</p>
+                                    <p className="text-gray-600 text-sm whitespace-pre-wrap">{historia.observaciones}</p>
+                                  </div>
+                                ) : (
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                    {historia.motivoConsulta && (
+                                      <div>
+                                        <p className="font-medium text-gray-700">Motivo de Consulta:</p>
+                                        <p className="text-gray-600">{historia.motivoConsulta}</p>
+                                      </div>
+                                    )}
+                                    {historia.diagnostico && (
+                                      <div>
+                                        <p className="font-medium text-gray-700">Diagnóstico:</p>
+                                        <p className="text-gray-600">{historia.diagnostico}</p>
+                                      </div>
+                                    )}
+                                    {historia.tratamiento && (
+                                      <div>
+                                        <p className="font-medium text-gray-700">Tratamiento:</p>
+                                        <p className="text-gray-600">{historia.tratamiento}</p>
+                                      </div>
+                                    )}
+                                    {(historia.presionArterial || historia.temperatura || historia.peso) && (
+                                      <div>
+                                        <p className="font-medium text-gray-700">Signos Vitales:</p>
+                                        <p className="text-gray-600">
+                                          {historia.presionArterial && `PA: ${historia.presionArterial} `}
+                                          {historia.temperatura && `Temp: ${historia.temperatura}°C `}
+                                          {historia.peso && `Peso: ${historia.peso}kg `}
+                                          {historia.altura && `Altura: ${historia.altura}m`}
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       )}
-                    </button>
-
-                    {isExpanded && (
-                      <div className="space-y-4">
-                    {historiasEspecialidad.map((historia) => (
-                      <div key={historia.id} className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            {searchType !== 'paciente' && (
-                              <>
-                                <h3 className="text-lg font-semibold text-gray-900">
-                                  {historia.paciente?.nombre} {historia.paciente?.apellido}
-                                </h3>
-                                <p className="text-sm text-gray-500">
-                                  DNI: {historia.paciente?.dni}
-                                </p>
-                              </>
-                            )}
-                          </div>
-                          <div className="text-right text-sm text-gray-500">
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              {new Date(historia.fechaConsulta).toLocaleDateString('es-AR', {
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric'
-                              })}
-                            </div>
-                            <div className="flex items-center mt-1">
-                              <User className="w-4 h-4 mr-1" />
-                              Dr. {historia.medico?.usuario?.nombre} {historia.medico?.usuario?.apellido}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Mostrar contenido de la historia clínica */}
-                        <div className="mt-3 pt-3 border-t border-gray-100">
-                          {historia.observaciones ? (
-                            <div>
-                              <p className="font-medium text-gray-700 text-sm mb-2">Historia Clínica:</p>
-                              <p className="text-gray-600 text-sm whitespace-pre-wrap">{historia.observaciones}</p>
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                              {historia.motivoConsulta && (
-                                <div>
-                                  <p className="font-medium text-gray-700">Motivo de Consulta:</p>
-                                  <p className="text-gray-600">{historia.motivoConsulta}</p>
-                                </div>
-                              )}
-                              {historia.diagnostico && (
-                                <div>
-                                  <p className="font-medium text-gray-700">Diagnóstico:</p>
-                                  <p className="text-gray-600">{historia.diagnostico}</p>
-                                </div>
-                              )}
-                              {historia.tratamiento && (
-                                <div>
-                                  <p className="font-medium text-gray-700">Tratamiento:</p>
-                                  <p className="text-gray-600">{historia.tratamiento}</p>
-                                </div>
-                              )}
-                              {(historia.presionArterial || historia.temperatura || historia.peso) && (
-                                <div>
-                                  <p className="font-medium text-gray-700">Signos Vitales:</p>
-                                  <p className="text-gray-600">
-                                    {historia.presionArterial && `PA: ${historia.presionArterial} `}
-                                    {historia.temperatura && `Temp: ${historia.temperatura}°C `}
-                                    {historia.peso && `Peso: ${historia.peso}kg `}
-                                    {historia.altura && `Altura: ${historia.altura}m`}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                      </div>
-                    )}
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="card text-center py-8 text-gray-500">
+                <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <p>No se encontraron historias clínicas</p>
+                <p className="text-xs mt-2 text-gray-400">
+                  Intenta ajustar los filtros de búsqueda
+                </p>
               </div>
             )
-          })}
-        </div>
-          ) : (
-            <div className="card text-center py-8 text-gray-500">
-              <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p>No se encontraron historias clínicas</p>
-            </div>
-          )}
+          })()}
         </>
       )}
 

@@ -21,7 +21,12 @@ export default function Login() {
       toast.success('Inicio de sesión exitoso')
       navigate('/dashboard')
     } else {
-      toast.error(result.error || 'Error al iniciar sesión')
+      // Mostrar error más detallado
+      const errorMsg = result.error || 'Error al iniciar sesión'
+      console.error('Error de login:', errorMsg)
+      toast.error(errorMsg, {
+        duration: 5000, // Mostrar por 5 segundos
+      })
     }
 
     setLoading(false)
@@ -132,7 +137,7 @@ export default function Login() {
 
       {/* Footer */}
       <footer className="bg-white border-t-2 border-gray-300 w-full shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl xl:max-w-[1400px] 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 xl:px-12 py-4">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-2 text-sm text-gray-600">
             <div>
               <p className="text-primary-600 font-medium text-center sm:text-left">Consultorios Médicos Dres. Colom</p>

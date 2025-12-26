@@ -1,8 +1,54 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Clock, Phone, FileText, User, Calendar, Edit } from 'lucide-react'
+import { Clock, Phone, FileText, User, Calendar, Edit, X } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { getAtencionesActivas, atenderPaciente, getAtencionesAtendiendo, getHistoriasMedicoHoy } from '../services/api'
+import { getAtencionesActivas, atenderPaciente, getAtencionesAtendiendo, getHistoriasMedicoHoy, cancelarAtencion } from '../services/api'
+
+// Componente para mostrar el tiempo de espera
+function TiempoEspera({ horaIngreso }) {
+  const [tiempoTranscurrido, setTiempoTranscurrido] = useState('')
+
+  useEffect(() => {
+    if (!horaIngreso) {
+      setTiempoTranscurrido('')
+      return
+    }
+
+    const calcularTiempo = () => {
+      const ahora = new Date()
+      const ingreso = new Date(horaIngreso)
+      const diferencia = ahora - ingreso
+
+      if (diferencia < 0) {
+        setTiempoTranscurrido('0:00:00')
+        return
+      }
+
+      const horas = Math.floor(diferencia / (1000 * 60 * 60))
+      const minutos = Math.floor((diferencia % (1000 * 60 * 60)) / (1000 * 60))
+      const segundos = Math.floor((diferencia % (1000 * 60)) / 1000)
+
+      setTiempoTranscurrido(`${horas}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`)
+    }
+
+    // Calcular inmediatamente
+    calcularTiempo()
+
+    // Actualizar cada segundo
+    const interval = setInterval(calcularTiempo, 1000)
+
+    return () => clearInterval(interval)
+  }, [horaIngreso])
+
+  if (!tiempoTranscurrido) return null
+
+  return (
+    <p className="text-xs font-semibold text-primary-600 flex items-center mt-1">
+      <Clock className="w-3 h-3 mr-1" />
+      Tiempo de espera: {tiempoTranscurrido}
+    </p>
+  )
+}
 import HistoriaClinicaForm from '../components/HistoriaClinicaForm'
 import EditarHistoriaClinicaForm from '../components/EditarHistoriaClinicaForm'
 import VerHistoriaClinica from '../components/VerHistoriaClinica'
@@ -49,8 +95,25 @@ export default function MedicoPanel() {
     },
   })
 
+  const cancelarMutation = useMutation({
+    mutationFn: cancelarAtencion,
+    onSuccess: () => {
+      toast.success('Paciente removido de la sala de espera')
+      queryClient.invalidateQueries(['atenciones'])
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || 'Error al cancelar atención')
+    },
+  })
+
   const handleLlamarPaciente = (atencionId) => {
     atenderMutation.mutate(atencionId)
+  }
+
+  const handleCancelarAtencion = (atencionId, pacienteNombre) => {
+    if (window.confirm(`¿Estás seguro de que deseas sacar a ${pacienteNombre} de la sala de espera?`)) {
+      cancelarMutation.mutate(atencionId)
+    }
   }
 
   const handleHistoriaSuccess = () => {
@@ -85,7 +148,7 @@ export default function MedicoPanel() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4 sm:gap-6">
         {/* Columna 1: Pacientes en Espera */}
         <div className="card">
           <div className="flex items-center justify-between mb-4">
@@ -124,16 +187,28 @@ export default function MedicoPanel() {
                         <p className="text-xs text-gray-500">
                           Ingreso: {new Date(atencion.horaIngreso).toLocaleTimeString()}
                         </p>
+                        <TiempoEspera horaIngreso={atencion.horaIngreso} />
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleLlamarPaciente(atencion.id)}
-                      disabled={atenderMutation.isPending}
-                      className="btn btn-primary text-sm whitespace-nowrap ml-4"
-                    >
-                      <Phone className="w-4 h-4 mr-2" />
-                      {atenderMutation.isPending ? 'Llamando...' : 'Llamar'}
-                    </button>
+                    <div className="flex flex-col gap-2 ml-4">
+                      <button
+                        onClick={() => handleLlamarPaciente(atencion.id)}
+                        disabled={atenderMutation.isPending}
+                        className="btn btn-primary text-sm whitespace-nowrap"
+                      >
+                        <Phone className="w-4 h-4 mr-2" />
+                        {atenderMutation.isPending ? 'Llamando...' : 'Llamar'}
+                      </button>
+                      <button
+                        onClick={() => handleCancelarAtencion(atencion.id, `${atencion.paciente?.nombre} ${atencion.paciente?.apellido}`)}
+                        disabled={cancelarMutation.isPending}
+                        className="btn btn-secondary text-sm whitespace-nowrap"
+                        title="Sacar de sala de espera"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        {cancelarMutation.isPending ? 'Cancelando...' : 'Cancelar'}
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

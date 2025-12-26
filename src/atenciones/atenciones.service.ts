@@ -245,6 +245,128 @@ export class AtencionesService {
 
     return atencionesConHistoria;
   }
+
+  /**
+   * Cancelar una atención (eliminar de sala de espera)
+   * Solo se puede cancelar si está en estado EN_ESPERA o ATENDIENDO
+   * También elimina los pagos asociados que se crearon al enviar el paciente a sala de espera
+   */
+  async cancelar(id: number, medicoId: number) {
+    const atencion = await this.prisma.atencion.findUnique({
+      where: { id },
+      include: {
+        paciente: true,
+        medico: true,
+        historia: {
+          include: {
+            pagos: true,
+          },
+        },
+      },
+    });
+
+    if (!atencion) {
+      throw new NotFoundException(`Atención con ID ${id} no encontrada`);
+    }
+
+    if (atencion.medicoId !== medicoId) {
+      throw new BadRequestException('Solo el médico asignado puede cancelar esta atención');
+    }
+
+    if (atencion.estado === EstadoAtencion.FINALIZADO) {
+      throw new BadRequestException('No se puede cancelar una atención finalizada');
+    }
+
+    // Buscar y eliminar pagos asociados a esta atención
+    // Los pagos se crean cuando se envía el paciente a sala de espera (antes de crear la atención)
+    // Buscamos pagos del mismo paciente que:
+    // 1. Se crearon cerca del momento de creación de la atención (dentro de 2 horas)
+    // 2. No tienen historia clínica asociada (son pagos de sala de espera, no de consultas completadas)
+    const fechaAtencion = new Date(atencion.createdAt);
+    const fechaDesde = new Date(fechaAtencion);
+    fechaDesde.setHours(fechaDesde.getHours() - 2); // 2 horas antes de la atención
+    const fechaHasta = new Date(fechaAtencion);
+    fechaHasta.setHours(fechaHasta.getHours() + 1); // 1 hora después (por si acaso)
+
+    // Buscar pagos del mismo paciente que se crearon cerca del momento de la atención
+    // Solo pagos sin historia clínica (pagos de sala de espera)
+    const pagosAsociados = await this.prisma.pago.findMany({
+      where: {
+        pacienteId: atencion.pacienteId,
+        fechaPago: {
+          gte: fechaDesde,
+          lte: fechaHasta,
+        },
+        // Solo eliminar pagos que no tienen historia clínica (pagos de sala de espera)
+        historiaClinicaId: null,
+      },
+    });
+
+    // Eliminar los pagos asociados
+    if (pagosAsociados.length > 0) {
+      await this.prisma.pago.deleteMany({
+        where: {
+          id: {
+            in: pagosAsociados.map((p) => p.id),
+          },
+        },
+      });
+    }
+
+    // Eliminar la atención
+    return this.prisma.atencion.delete({
+      where: { id },
+      include: {
+        paciente: true,
+        medico: {
+          include: {
+            usuario: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * Obtener todas las atenciones activas (EN_ESPERA y ATENDIENDO) para la secretaria
+   */
+  async findActivasParaSecretaria() {
+    try {
+      const atenciones = await this.prisma.atencion.findMany({
+        where: {
+          estado: {
+            in: [EstadoAtencion.EN_ESPERA, EstadoAtencion.ATENDIENDO],
+          },
+          paciente: {
+            activo: true,
+          },
+        },
+        include: {
+          paciente: true,
+          medico: {
+            include: {
+              usuario: {
+                select: {
+                  id: true,
+                  nombre: true,
+                  apellido: true,
+                  email: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          horaIngreso: 'asc',
+        },
+      });
+
+      return atenciones;
+    } catch (error) {
+      console.error('Error en findActivasParaSecretaria:', error);
+      throw error;
+    }
+  }
 }
 
 

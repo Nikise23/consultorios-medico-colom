@@ -17,6 +17,25 @@ export default function PacienteForm({ paciente, onClose, onSuccess }) {
     numeroAfiliado: '',
   })
 
+  // Función para calcular la edad
+  const calcularEdad = (fechaNacimiento) => {
+    if (!fechaNacimiento) return null
+    
+    const hoy = new Date()
+    const nacimiento = new Date(fechaNacimiento)
+    let edad = hoy.getFullYear() - nacimiento.getFullYear()
+    const mes = hoy.getMonth() - nacimiento.getMonth()
+    
+    if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
+      edad--
+    }
+    
+    return edad
+  }
+
+  // Calcular edad cuando cambia la fecha de nacimiento
+  const edadCalculada = formData.fechaNacimiento ? calcularEdad(formData.fechaNacimiento) : null
+
   useEffect(() => {
     if (paciente) {
       setFormData({
@@ -166,7 +185,13 @@ export default function PacienteForm({ paciente, onClose, onSuccess }) {
                 value={formData.fechaNacimiento}
                 onChange={(e) => setFormData({ ...formData, fechaNacimiento: e.target.value })}
                 className="input"
+                max={new Date().toISOString().split('T')[0]} // No permitir fechas futuras
               />
+              {edadCalculada !== null && (
+                <p className="mt-1 text-sm text-primary-600 font-medium">
+                  Edad: {edadCalculada} {edadCalculada === 1 ? 'año' : 'años'}
+                </p>
+              )}
             </div>
 
             <div>

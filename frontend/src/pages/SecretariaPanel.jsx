@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, Plus, Send, UserPlus, Users, Edit, Trash2 } from 'lucide-react'
+import { Search, Plus, Send, UserPlus, Users, Edit, Trash2, Clock, UserCheck } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { searchPacientes, enviarPacienteAEspera, getAllPacientes, deletePaciente } from '../services/api'
+import { searchPacientes, enviarPacienteAEspera, getAllPacientes, deletePaciente, getAtencionesActivasSecretaria } from '../services/api'
 import PacienteForm from '../components/PacienteForm'
 import EnviarAEsperaConPago from '../components/EnviarAEsperaConPago'
 
@@ -33,6 +33,13 @@ export default function SecretariaPanel() {
       return result
     },
     enabled: showAllPacientes && searchValue.length === 0,
+  })
+
+  // Obtener atenciones activas (sala de espera y en atención)
+  const { data: atencionesActivas, isLoading: loadingAtenciones } = useQuery({
+    queryKey: ['atenciones', 'activas-secretaria'],
+    queryFn: () => getAtencionesActivasSecretaria(),
+    refetchInterval: 5000, // Actualizar cada 5 segundos
   })
 
   // Cuando hay búsqueda, ocultar lista completa
@@ -93,6 +100,119 @@ export default function SecretariaPanel() {
             Busca pacientes y envíalos a sala de espera
           </p>
         </div>
+      </div>
+
+      {/* Sección de Atenciones Activas */}
+      <div className="card mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 flex items-center">
+            <Clock className="w-5 h-5 mr-2 text-primary-600" />
+            Estado de Atenciones
+          </h2>
+          <div className="flex items-center text-sm text-gray-500">
+            <Clock className="w-4 h-4 mr-1" />
+            Actualización automática
+          </div>
+        </div>
+
+        {loadingAtenciones ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Cargando...</p>
+          </div>
+        ) : (() => {
+          const atencionesData = atencionesActivas?.data?.data || atencionesActivas?.data
+          const atencionesArray = Array.isArray(atencionesData) ? atencionesData : []
+          
+          if (atencionesArray.length === 0) {
+            return (
+              <div className="text-center py-8 text-gray-500">
+                <Clock className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <p>No hay pacientes en sala de espera o en atención</p>
+              </div>
+            )
+          }
+
+          // Separar por estado
+          const enEspera = atencionesArray.filter(a => a.estado === 'EN_ESPERA')
+          const atendiendo = atencionesArray.filter(a => a.estado === 'ATENDIENDO')
+
+          return (
+            <div className="space-y-4">
+              {/* Pacientes en Espera */}
+              {enEspera.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center">
+                    <Clock className="w-4 h-4 mr-2 text-yellow-600" />
+                    En Sala de Espera ({enEspera.length})
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {enEspera.map((atencion) => (
+                      <div
+                        key={atencion.id}
+                        className="p-3 border border-yellow-200 bg-yellow-50 rounded-lg"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">
+                              {atencion.paciente?.nombre} {atencion.paciente?.apellido}
+                            </p>
+                            <p className="text-sm text-gray-600">DNI: {atencion.paciente?.dni}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Dr. {atencion.medico?.usuario?.nombre} {atencion.medico?.usuario?.apellido}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {atencion.medico?.especialidad}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              Ingreso: {new Date(atencion.horaIngreso).toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Pacientes en Atención */}
+              {atendiendo.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-3 flex items-center">
+                    <UserCheck className="w-4 h-4 mr-2 text-green-600" />
+                    En Atención ({atendiendo.length})
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {atendiendo.map((atencion) => (
+                      <div
+                        key={atencion.id}
+                        className="p-3 border border-green-200 bg-green-50 rounded-lg"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-medium text-gray-900">
+                              {atencion.paciente?.nombre} {atencion.paciente?.apellido}
+                            </p>
+                            <p className="text-sm text-gray-600">DNI: {atencion.paciente?.dni}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Dr. {atencion.medico?.usuario?.nombre} {atencion.medico?.usuario?.apellido}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {atencion.medico?.especialidad}
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              Inicio: {new Date(atencion.horaAtencion).toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </div>
 
       {/* Búsqueda y Botón Nuevo */}
@@ -196,66 +316,142 @@ export default function SecretariaPanel() {
             console.log('pacientesArray:', pacientesArray)
             
             return pacientesArray.length > 0 ? (
-              <div className="space-y-3">
-                {pacientesArray.map((paciente) => (
-                <div
-                  key={paciente.id}
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    selectedPaciente?.id === paciente.id
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:border-primary-300'
-                  }`}
-                  onClick={() => setSelectedPaciente(paciente)}
-                >
-                  <div className="flex justify-between items-center">
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">
-                        {paciente.nombre} {paciente.apellido}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        DNI: {paciente.dni} | Obra Social: {paciente.obraSocial}
-                      </p>
-                      {paciente.telefono && (
-                        <p className="text-xs text-gray-400 mt-1">
-                          Tel: {paciente.telefono}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-2 ml-4 items-center">
-                      {selectedPaciente?.id === paciente.id && (
-                        <span className="text-primary-600 font-medium text-sm">Seleccionado</span>
-                      )}
-                      <button
-                        onClick={(e) => handleEdit(paciente, e)}
-                        className="btn btn-secondary text-sm"
-                        title="Editar paciente"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => handleDelete(paciente, e)}
-                        className="btn btn-danger text-sm"
-                        title="Eliminar paciente"
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedPaciente(paciente)
-                          handleEnviarAEspera()
-                        }}
-                        className="btn btn-primary text-sm whitespace-nowrap"
-                      >
-                        <Send className="w-4 h-4 mr-1" />
-                        Cobrar y Enviar
-                      </button>
-                    </div>
-                  </div>
+              <>
+                {/* Vista de tabla para pantallas grandes */}
+                <div className="hidden lg:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Paciente</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">DNI</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Obra Social</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Teléfono</th>
+                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pacientesArray.map((paciente) => (
+                        <tr
+                          key={paciente.id}
+                          className={`border-b border-gray-100 cursor-pointer transition-colors ${
+                            selectedPaciente?.id === paciente.id
+                              ? 'bg-primary-50 hover:bg-primary-100'
+                              : 'hover:bg-gray-50'
+                          }`}
+                          onClick={() => setSelectedPaciente(paciente)}
+                        >
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-900">
+                                {paciente.nombre} {paciente.apellido}
+                              </span>
+                              {selectedPaciente?.id === paciente.id && (
+                                <span className="text-xs px-2 py-0.5 bg-primary-600 text-white rounded">Seleccionado</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{paciente.dni}</td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{paciente.obraSocial || '-'}</td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{paciente.telefono || '-'}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={(e) => handleEdit(paciente, e)}
+                                className="p-1.5 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                                title="Editar paciente"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => handleDelete(paciente, e)}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                title="Eliminar paciente"
+                                disabled={deleteMutation.isPending}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedPaciente(paciente)
+                                  handleEnviarAEspera()
+                                }}
+                                className="px-3 py-1.5 bg-primary-600 text-white text-sm rounded hover:bg-primary-700 transition-colors flex items-center gap-1"
+                                title="Cobrar y enviar a sala"
+                              >
+                                <Send className="w-4 h-4" />
+                                <span className="hidden xl:inline">Cobrar y Enviar</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
-              </div>
+
+                {/* Vista de tarjetas para pantallas pequeñas */}
+                <div className="lg:hidden space-y-3">
+                  {pacientesArray.map((paciente) => (
+                    <div
+                      key={paciente.id}
+                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                        selectedPaciente?.id === paciente.id
+                          ? 'border-primary-500 bg-primary-50'
+                          : 'border-gray-200 hover:border-primary-300'
+                      }`}
+                      onClick={() => setSelectedPaciente(paciente)}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">
+                            {paciente.nombre} {paciente.apellido}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            DNI: {paciente.dni} | Obra Social: {paciente.obraSocial}
+                          </p>
+                          {paciente.telefono && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              Tel: {paciente.telefono}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2 ml-4 items-center">
+                          {selectedPaciente?.id === paciente.id && (
+                            <span className="text-primary-600 font-medium text-sm">Seleccionado</span>
+                          )}
+                          <button
+                            onClick={(e) => handleEdit(paciente, e)}
+                            className="btn btn-secondary text-sm"
+                            title="Editar paciente"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => handleDelete(paciente, e)}
+                            className="btn btn-danger text-sm"
+                            title="Eliminar paciente"
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedPaciente(paciente)
+                              handleEnviarAEspera()
+                            }}
+                            className="btn btn-primary text-sm whitespace-nowrap"
+                          >
+                            <Send className="w-4 h-4 mr-1" />
+                            Cobrar y Enviar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
             <div className="text-center py-8 text-gray-500">
               <UserPlus className="w-12 h-12 mx-auto mb-4 text-gray-400" />
@@ -295,61 +491,135 @@ export default function SecretariaPanel() {
           <div className="card mb-6">
             <h2 className="text-lg font-semibold mb-4">Resultados de Búsqueda</h2>
             {pacientesArray.length > 0 ? (
-              <div className="space-y-3">
-                {pacientesArray.map((paciente) => (
-                <div
-                  key={paciente.id}
-                  className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                    selectedPaciente?.id === paciente.id
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-gray-200 hover:border-primary-300'
-                  }`}
-                  onClick={() => setSelectedPaciente(paciente)}
-                >
-                  <div className="flex justify-between items-center">
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">
-                        {paciente.nombre} {paciente.apellido}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        DNI: {paciente.dni} | Obra Social: {paciente.obraSocial}
-                      </p>
-                    </div>
-                    <div className="flex gap-2 ml-4 items-center">
-                      {selectedPaciente?.id === paciente.id && (
-                        <span className="text-primary-600 font-medium text-sm">Seleccionado</span>
-                      )}
-                      <button
-                        onClick={(e) => handleEdit(paciente, e)}
-                        className="btn btn-secondary text-sm"
-                        title="Editar paciente"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => handleDelete(paciente, e)}
-                        className="btn btn-danger text-sm"
-                        title="Eliminar paciente"
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setSelectedPaciente(paciente)
-                          handleEnviarAEspera()
-                        }}
-                        className="btn btn-primary text-sm whitespace-nowrap"
-                      >
-                        <Send className="w-4 h-4 mr-1" />
-                        Cobrar y Enviar
-                      </button>
-                    </div>
-                  </div>
+              <>
+                {/* Vista de tabla para pantallas grandes */}
+                <div className="hidden lg:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Paciente</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">DNI</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Obra Social</th>
+                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pacientesArray.map((paciente) => (
+                        <tr
+                          key={paciente.id}
+                          className={`border-b border-gray-100 cursor-pointer transition-colors ${
+                            selectedPaciente?.id === paciente.id
+                              ? 'bg-primary-50 hover:bg-primary-100'
+                              : 'hover:bg-gray-50'
+                          }`}
+                          onClick={() => setSelectedPaciente(paciente)}
+                        >
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-gray-900">
+                                {paciente.nombre} {paciente.apellido}
+                              </span>
+                              {selectedPaciente?.id === paciente.id && (
+                                <span className="text-xs px-2 py-0.5 bg-primary-600 text-white rounded">Seleccionado</span>
+                              )}
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{paciente.dni}</td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{paciente.obraSocial || '-'}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={(e) => handleEdit(paciente, e)}
+                                className="p-1.5 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                                title="Editar paciente"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => handleDelete(paciente, e)}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                title="Eliminar paciente"
+                                disabled={deleteMutation.isPending}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setSelectedPaciente(paciente)
+                                  handleEnviarAEspera()
+                                }}
+                                className="px-3 py-1.5 bg-primary-600 text-white text-sm rounded hover:bg-primary-700 transition-colors flex items-center gap-1"
+                                title="Cobrar y enviar a sala"
+                              >
+                                <Send className="w-4 h-4" />
+                                <span className="hidden xl:inline">Cobrar y Enviar</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              ))}
-              </div>
+
+                {/* Vista de tarjetas para pantallas pequeñas */}
+                <div className="lg:hidden space-y-3">
+                  {pacientesArray.map((paciente) => (
+                    <div
+                      key={paciente.id}
+                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                        selectedPaciente?.id === paciente.id
+                          ? 'border-primary-500 bg-primary-50'
+                          : 'border-gray-200 hover:border-primary-300'
+                      }`}
+                      onClick={() => setSelectedPaciente(paciente)}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div className="flex-1">
+                          <p className="font-medium text-gray-900">
+                            {paciente.nombre} {paciente.apellido}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            DNI: {paciente.dni} | Obra Social: {paciente.obraSocial}
+                          </p>
+                        </div>
+                        <div className="flex gap-2 ml-4 items-center">
+                          {selectedPaciente?.id === paciente.id && (
+                            <span className="text-primary-600 font-medium text-sm">Seleccionado</span>
+                          )}
+                          <button
+                            onClick={(e) => handleEdit(paciente, e)}
+                            className="btn btn-secondary text-sm"
+                            title="Editar paciente"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => handleDelete(paciente, e)}
+                            className="btn btn-danger text-sm"
+                            title="Eliminar paciente"
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedPaciente(paciente)
+                              handleEnviarAEspera()
+                            }}
+                            className="btn btn-primary text-sm whitespace-nowrap"
+                          >
+                            <Send className="w-4 h-4 mr-1" />
+                            Cobrar y Enviar
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : pacienteUnico ? (
               // Paciente único encontrado (búsqueda por DNI)
               <div className="p-4 border border-gray-200 rounded-lg">

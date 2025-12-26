@@ -75,7 +75,7 @@ export class HistoriasClinicasController {
   }
 
   @Get('search')
-  @Roles(Rol.MEDICO, Rol.ADMINISTRADOR)
+  @Roles(Rol.MEDICO, Rol.ADMINISTRADOR, Rol.SECRETARIA)
   async search(@Query() searchDto: SearchHistoriaClinicaDto) {
     try {
       const result = await this.historiasClinicasService.search(searchDto);

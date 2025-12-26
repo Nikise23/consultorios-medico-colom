@@ -211,7 +211,18 @@ export class HistoriasClinicasService {
     if ((dni && dni.trim()) || (apellido && apellido.trim())) {
       const pacienteWhere: any = {};
       if (dni && dni.trim()) {
-        pacienteWhere.dni = dni.trim();
+        // Búsqueda parcial del DNI (coincidencias parciales)
+        try {
+          pacienteWhere.dni = {
+            contains: dni.trim(),
+            mode: 'insensitive',
+          };
+        } catch (error) {
+          // Fallback a case-sensitive si el modo insensitive falla
+          pacienteWhere.dni = {
+            contains: dni.trim(),
+          };
+        }
       }
       if (apellido && apellido.trim()) {
         try {
@@ -357,12 +368,17 @@ export class HistoriasClinicasService {
       pacienteId = pacienteIdOrDniOrApellido;
     } else {
       const searchValue = pacienteIdOrDniOrApellido.trim();
-      // Buscar paciente por DNI o apellido
+      // Buscar paciente por DNI o apellido (búsqueda parcial)
       try {
         const paciente = await this.prisma.paciente.findFirst({
           where: {
             OR: [
-              { dni: searchValue },
+              {
+                dni: {
+                  contains: searchValue,
+                  mode: 'insensitive',
+                },
+              },
               {
                 apellido: {
                   contains: searchValue,
@@ -385,7 +401,11 @@ export class HistoriasClinicasService {
         const paciente = await this.prisma.paciente.findFirst({
           where: {
             OR: [
-              { dni: searchValue },
+              {
+                dni: {
+                  contains: searchValue,
+                },
+              },
               {
                 apellido: {
                   contains: searchValue,

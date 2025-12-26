@@ -208,7 +208,57 @@ export default function PagosPanel() {
           {pacientes?.data && Array.isArray(pacientes.data) && pacientes.data.length > 0 && (
             <div className="card mb-6">
               <h2 className="text-lg font-semibold mb-4">Resultados</h2>
-              <div className="space-y-3">
+              
+              {/* Vista de tabla para pantallas grandes */}
+              <div className="hidden lg:block overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Paciente</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">DNI</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Obra Social</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Teléfono</th>
+                      <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
+                      <th className="text-center py-3 px-4 text-sm font-semibold text-gray-700">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pacientes.data.map((paciente) => {
+                      if (!paciente || !paciente.id) return null
+                      
+                      return (
+                        <tr
+                          key={paciente.id}
+                          className={`border-b border-gray-100 cursor-pointer transition-colors ${
+                            selectedPaciente?.id === paciente.id
+                              ? 'bg-primary-50 hover:bg-primary-100'
+                              : 'hover:bg-gray-50'
+                          }`}
+                          onClick={() => handlePacienteSelect(paciente)}
+                        >
+                          <td className="py-3 px-4">
+                            <span className="font-medium text-gray-900">
+                              {paciente.nombre} {paciente.apellido}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{paciente.dni}</td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{paciente.obraSocial || '-'}</td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{paciente.telefono || '-'}</td>
+                          <td className="py-3 px-4 text-sm text-gray-600">{paciente.email || '-'}</td>
+                          <td className="py-3 px-4 text-center">
+                            {selectedPaciente?.id === paciente.id && (
+                              <span className="text-xs px-2 py-1 bg-primary-600 text-white rounded">Seleccionado</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Vista de tarjetas para pantallas pequeñas */}
+              <div className="lg:hidden space-y-3">
                 {pacientes.data.map((paciente) => {
                   if (!paciente || !paciente.id) return null
                   
@@ -288,67 +338,156 @@ export default function PagosPanel() {
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto"></div>
             </div>
           ) : pagosList && pagosList.length > 0 ? (
-            <div className="space-y-3">
-              {pagosList.map((pago) => (
-                <div
-                  key={pago.id}
-                  className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      {getTipoPagoIcon(pago.tipoPago)}
-                      <span className="font-medium text-gray-900">
+            <div className="overflow-x-auto">
+              {/* Vista de tabla para pantallas grandes */}
+              <table className="hidden lg:table w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Fecha</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Paciente</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Monto</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Tipo</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Comprobante</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Médico</th>
+                    <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagosList.map((pago) => (
+                    <tr key={pago.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {new Date(pago.fechaPago).toLocaleDateString('es-AR')}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-900">
+                        {pago.paciente?.nombre} {pago.paciente?.apellido}
+                        <span className="text-gray-500 text-xs block">DNI: {pago.paciente?.dni}</span>
+                      </td>
+                      <td className="py-3 px-4 text-sm font-semibold text-gray-900">
                         ${pago.monto.toFixed(2)}
-                      </span>
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        <div className="flex items-center gap-2">
+                          {getTipoPagoIcon(pago.tipoPago)}
+                          <span className="text-gray-700">{getTipoPagoLabel(pago.tipoPago)}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {pago.numeroComprobante || '-'}
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {(() => {
+                          // Intentar obtener el médico desde historia clínica o desde atención
+                          const medico = pago.historiaClinica?.medico || pago.atencion?.medico;
+                          if (medico) {
+                            return (
+                              <span>
+                                Dr. {medico.usuario?.nombre} {medico.usuario?.apellido}
+                                <span className="text-xs text-gray-500 block">{medico.especialidad}</span>
+                              </span>
+                            );
+                          }
+                          return '-';
+                        })()}
+                      </td>
+                      <td className="py-3 px-4 text-sm">
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => setPagoEditando(pago)}
+                            className="p-1.5 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                            title="Editar pago"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEliminarPago(pago)}
+                            className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                            title="Eliminar pago"
+                            disabled={deleteMutation.isPending}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              
+              {/* Vista de tarjetas para pantallas pequeñas */}
+              <div className="lg:hidden space-y-3">
+                {pagosList.map((pago) => (
+                  <div
+                    key={pago.id}
+                    className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-2">
+                        {getTipoPagoIcon(pago.tipoPago)}
+                        <span className="font-medium text-gray-900">
+                          ${pago.monto.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-gray-500">
+                          {new Date(pago.fechaPago).toLocaleDateString()}
+                        </span>
+                        <button
+                          onClick={() => setPagoEditando(pago)}
+                          className="p-1 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                          title="Editar pago"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleEliminarPago(pago)}
+                          className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Eliminar pago"
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-gray-500">
-                        {new Date(pago.fechaPago).toLocaleDateString()}
-                      </span>
-                      <button
-                        onClick={() => setPagoEditando(pago)}
-                        className="p-1 text-primary-600 hover:bg-primary-50 rounded transition-colors"
-                        title="Editar pago"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleEliminarPago(pago)}
-                        className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
-                        title="Eliminar pago"
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
+                    <div className="text-sm text-gray-600">
+                      <p>
+                        <span className="font-medium">Paciente:</span> {pago.paciente?.nombre} {pago.paciente?.apellido} (DNI: {pago.paciente?.dni})
+                      </p>
+                      <p>Tipo: {getTipoPagoLabel(pago.tipoPago)}</p>
+                      {pago.numeroComprobante && (
+                        <p>Comprobante: {pago.numeroComprobante}</p>
+                      )}
+                      {(() => {
+                        const medico = pago.historiaClinica?.medico || pago.atencion?.medico;
+                        if (pago.historiaClinica) {
+                          return (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Consulta: {new Date(pago.historiaClinica.fechaConsulta).toLocaleDateString()}
+                              {medico && (
+                                <span> - Dr. {medico.usuario?.nombre} {medico.usuario?.apellido} ({medico.especialidad})</span>
+                              )}
+                            </p>
+                          );
+                        } else if (medico) {
+                          return (
+                            <p className="text-xs text-gray-500 mt-1">
+                              Médico: Dr. {medico.usuario?.nombre} {medico.usuario?.apellido} ({medico.especialidad})
+                            </p>
+                          );
+                        }
+                        return null;
+                      })()}
+                      {pago.observaciones && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Observaciones: {pago.observaciones}
+                        </p>
+                      )}
                     </div>
                   </div>
-                  <div className="text-sm text-gray-600">
-                    <p>
-                      <span className="font-medium">Paciente:</span> {pago.paciente?.nombre} {pago.paciente?.apellido} (DNI: {pago.paciente?.dni})
-                    </p>
-                    <p>Tipo: {getTipoPagoLabel(pago.tipoPago)}</p>
-                    {pago.numeroComprobante && (
-                      <p>Comprobante: {pago.numeroComprobante}</p>
-                    )}
-                    {pago.historiaClinica && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Consulta: {new Date(pago.historiaClinica.fechaConsulta).toLocaleDateString()}
-                        {pago.historiaClinica.medico && (
-                          <span> - Dr. {pago.historiaClinica.medico.usuario?.nombre} {pago.historiaClinica.medico.usuario?.apellido} ({pago.historiaClinica.medico.especialidad})</span>
-                        )}
-                      </p>
-                    )}
-                    {pago.observaciones && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Observaciones: {pago.observaciones}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold text-gray-900">Total:</span>
+                  <span className="font-semibold text-gray-900 text-lg">Total:</span>
                   <span className="text-xl font-bold text-primary-600">
                     ${totalTodosPagos.toFixed(2)}
                   </span>
@@ -366,7 +505,7 @@ export default function PagosPanel() {
 
       {/* Información del Paciente Seleccionado y Registro de Pago */}
       {viewMode === 'paciente' && selectedPaciente && selectedPaciente.id && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
           {/* Formulario de Pago */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
@@ -390,69 +529,139 @@ export default function PagosPanel() {
           </div>
 
           {/* Historial de Pagos */}
-          <div className="card">
+          <div className="card lg:col-span-1 xl:col-span-2">
             <h2 className="text-lg font-semibold mb-4">Historial de Pagos</h2>
             {loadingPagos ? (
               <div className="text-center py-8">
                 <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto"></div>
               </div>
             ) : pagos?.data && pagos.data.length > 0 ? (
-              <div className="space-y-3">
-                {pagos.data.map((pago) => (
-                  <div
-                    key={pago.id}
-                    className="p-4 border border-gray-200 rounded-lg"
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-2">
-                        {getTipoPagoIcon(pago.tipoPago)}
-                        <span className="font-medium text-gray-900">
-                          ${pago.monto.toFixed(2)}
+              <>
+                {/* Vista de tabla para pantallas grandes */}
+                <div className="hidden lg:block overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-200">
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Fecha</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Monto</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Tipo</th>
+                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Comprobante</th>
+                        <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagos.data.map((pago) => (
+                        <tr key={pago.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                          <td className="py-3 px-4 text-sm text-gray-600">
+                            {new Date(pago.fechaPago).toLocaleDateString('es-AR')}
+                          </td>
+                          <td className="py-3 px-4 text-sm font-semibold text-gray-900">
+                            ${pago.monto.toFixed(2)}
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            <div className="flex items-center gap-2">
+                              {getTipoPagoIcon(pago.tipoPago)}
+                              <span className="text-gray-700">{getTipoPagoLabel(pago.tipoPago)}</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-4 text-sm text-gray-600">
+                            {pago.numeroComprobante || '-'}
+                          </td>
+                          <td className="py-3 px-4 text-sm">
+                            <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => setPagoEditando(pago)}
+                                className="p-1.5 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                                title="Editar pago"
+                              >
+                                <Edit className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => handleEliminarPago(pago)}
+                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                title="Eliminar pago"
+                                disabled={deleteMutation.isPending}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr className="border-t-2 border-gray-300">
+                        <td colSpan="4" className="py-3 px-4 text-right font-semibold text-gray-900">
+                          Total Pagado:
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="text-xl font-bold text-primary-600">
+                            ${totalPagado.toFixed(2)}
+                          </span>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                {/* Vista de tarjetas para pantallas pequeñas */}
+                <div className="lg:hidden space-y-3">
+                  {pagos.data.map((pago) => (
+                    <div
+                      key={pago.id}
+                      className="p-4 border border-gray-200 rounded-lg"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          {getTipoPagoIcon(pago.tipoPago)}
+                          <span className="font-medium text-gray-900">
+                            ${pago.monto.toFixed(2)}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500">
+                          {new Date(pago.fechaPago).toLocaleDateString()}
                         </span>
                       </div>
-                      <span className="text-xs text-gray-500">
-                        {new Date(pago.fechaPago).toLocaleDateString()}
+                      <div className="text-sm text-gray-600">
+                        <p>Tipo: {getTipoPagoLabel(pago.tipoPago)}</p>
+                        {pago.numeroComprobante && (
+                          <p>Comprobante: {pago.numeroComprobante}</p>
+                        )}
+                        {pago.historiaClinica && (
+                          <p className="text-xs text-gray-500 mt-1">
+                            Consulta: {new Date(pago.historiaClinica.fechaConsulta).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        <button
+                          onClick={() => setPagoEditando(pago)}
+                          className="btn btn-secondary text-xs py-1 px-2"
+                        >
+                          <Edit className="w-3 h-3 mr-1" />
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => handleEliminarPago(pago)}
+                          className="btn btn-danger text-xs py-1 px-2"
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-900">Total Pagado:</span>
+                      <span className="text-xl font-bold text-primary-600">
+                        ${totalPagado.toFixed(2)}
                       </span>
                     </div>
-                    <div className="text-sm text-gray-600">
-                      <p>Tipo: {getTipoPagoLabel(pago.tipoPago)}</p>
-                      {pago.numeroComprobante && (
-                        <p>Comprobante: {pago.numeroComprobante}</p>
-                      )}
-                      {pago.historiaClinica && (
-                        <p className="text-xs text-gray-500 mt-1">
-                          Consulta: {new Date(pago.historiaClinica.fechaConsulta).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-2 mt-2">
-                      <button
-                        onClick={() => setPagoEditando(pago)}
-                        className="btn btn-secondary text-xs py-1 px-2"
-                      >
-                        <Edit className="w-3 h-3 mr-1" />
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleEliminarPago(pago)}
-                        className="btn btn-danger text-xs py-1 px-2"
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="w-3 h-3 mr-1" />
-                        Eliminar
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                <div className="mt-4 pt-4 border-t border-gray-200">
-                  <div className="flex justify-between items-center">
-                    <span className="font-semibold text-gray-900">Total Pagado:</span>
-                    <span className="text-xl font-bold text-primary-600">
-                      ${totalPagado.toFixed(2)}
-                    </span>
                   </div>
                 </div>
-              </div>
+              </>
             ) : (
               <div className="text-center py-8 text-gray-500">
                 <DollarSign className="w-12 h-12 mx-auto mb-4 text-gray-400" />

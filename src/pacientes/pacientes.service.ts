@@ -11,54 +11,44 @@ export class PacientesService {
   async search(searchDto: SearchPacienteDto) {
     const { dni, apellido } = searchDto;
 
-    // Búsqueda por DNI (exacta)
+    const where: any = {
+      activo: true,
+    };
+
+    // Búsqueda por DNI (parcial, case-insensitive)
     if (dni && dni.trim()) {
-      const paciente = await this.prisma.paciente.findUnique({
-        where: { dni: dni.trim() },
-      });
-      return paciente ? [paciente] : [];
+      try {
+        where.dni = {
+          contains: dni.trim(),
+          mode: 'insensitive',
+        };
+      } catch (error) {
+        // Fallback a búsqueda case-sensitive si el modo insensitive falla
+        where.dni = {
+          contains: dni.trim(),
+        };
+      }
     }
 
     // Búsqueda por apellido (parcial, case-insensitive)
     if (apellido && apellido.trim()) {
       try {
-        return await this.prisma.paciente.findMany({
-          where: {
-            apellido: {
-              contains: apellido.trim(),
-              mode: 'insensitive',
-            },
-            activo: true,
-          },
-          take: 20,
-          orderBy: {
-            apellido: 'asc',
-          },
-        });
+        where.apellido = {
+          contains: apellido.trim(),
+          mode: 'insensitive',
+        };
       } catch (error) {
         // Fallback a búsqueda case-sensitive si el modo insensitive falla
-        console.error('Error en búsqueda case-insensitive, usando case-sensitive:', error);
-        return this.prisma.paciente.findMany({
-          where: {
-            apellido: {
-              contains: apellido.trim(),
-            },
-            activo: true,
-          },
-          take: 20,
-          orderBy: {
-            apellido: 'asc',
-          },
-        });
+        where.apellido = {
+          contains: apellido.trim(),
+        };
       }
     }
 
-    // Si no hay filtros, retornar todos los pacientes activos
+    // Si hay filtros, buscar con ellos; si no, retornar todos los pacientes activos
     return this.prisma.paciente.findMany({
-      where: {
-        activo: true,
-      },
-      take: 50,
+      where,
+      take: dni || apellido ? 20 : 50,
       orderBy: {
         apellido: 'asc',
       },

@@ -15,6 +15,7 @@ export default function ReportesPagos() {
     return `${anio}-${mes}`
   }
 
+  // Para secretaria, siempre usar 'dia', para otros roles permitir cambiar
   const [periodo, setPeriodo] = useState('dia') // dia, mes, anio
   const [mesSeleccionado, setMesSeleccionado] = useState(getMesActual())
   const [anioSeleccionado, setAnioSeleccionado] = useState(new Date().getFullYear().toString())
@@ -27,12 +28,15 @@ export default function ReportesPagos() {
   })
 
   // Obtener reporte según el período seleccionado
+  // Para secretaria, forzar siempre 'dia'
+  const periodoReal = user?.rol === 'SECRETARIA' ? 'dia' : periodo
+  
   const { data: reporte, isLoading: loadingReporte, error: errorReporte } = useQuery({
-    queryKey: ['pagos', 'reporte', periodo, mesSeleccionado, anioSeleccionado],
+    queryKey: ['pagos', 'reporte', periodoReal, mesSeleccionado, anioSeleccionado],
     queryFn: () => {
-      if (periodo === 'dia') {
+      if (periodoReal === 'dia') {
         return getReportePagosDia()
-      } else if (periodo === 'mes') {
+      } else if (periodoReal === 'mes') {
         // Parsear el string YYYY-MM del input type="month"
         if (mesSeleccionado) {
           const [anio, mes] = mesSeleccionado.split('-').map(Number)
@@ -78,7 +82,7 @@ export default function ReportesPagos() {
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
         </div>
       ) : estadisticas?.data && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+        <div className={`grid grid-cols-1 ${user?.rol === 'SECRETARIA' ? 'md:grid-cols-1' : 'md:grid-cols-3 xl:grid-cols-4'} gap-6 mb-6`}>
           {/* Resumen del Día */}
           <div className="card bg-gradient-to-br from-green-50 to-green-100 border-green-200">
             <div className="flex items-center justify-between">
@@ -105,57 +109,61 @@ export default function ReportesPagos() {
             </div>
           </div>
 
-          {/* Resumen del Mes */}
-          <div className="card bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-blue-700">Este Mes</p>
-                <p className="text-2xl font-bold text-blue-900 mt-1">
-                  {formatearMoneda(estadisticas.data.mes.total)}
-                </p>
-                <div className="flex gap-4 mt-2 text-xs">
-                  <span className="text-blue-700">
-                    Efectivo: {formatearMoneda(estadisticas.data.mes.efectivo)}
-                  </span>
-                  <span className="text-blue-700">
-                    Transf: {formatearMoneda(estadisticas.data.mes.transferencia)}
-                  </span>
+          {/* Resumen del Mes - Oculto para secretaria */}
+          {user?.rol !== 'SECRETARIA' && (
+            <div className="card bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-700">Este Mes</p>
+                  <p className="text-2xl font-bold text-blue-900 mt-1">
+                    {formatearMoneda(estadisticas.data.mes.total)}
+                  </p>
+                  <div className="flex gap-4 mt-2 text-xs">
+                    <span className="text-blue-700">
+                      Efectivo: {formatearMoneda(estadisticas.data.mes.efectivo)}
+                    </span>
+                    <span className="text-blue-700">
+                      Transf: {formatearMoneda(estadisticas.data.mes.transferencia)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-blue-600 mt-1">
+                    {estadisticas.data.mes.cantidad} {estadisticas.data.mes.cantidad === 1 ? 'pago' : 'pagos'}
+                  </p>
                 </div>
-                <p className="text-xs text-blue-600 mt-1">
-                  {estadisticas.data.mes.cantidad} {estadisticas.data.mes.cantidad === 1 ? 'pago' : 'pagos'}
-                </p>
-              </div>
-              <div className="bg-blue-200 rounded-full p-3">
-                <TrendingUp className="w-8 h-8 text-blue-700" />
+                <div className="bg-blue-200 rounded-full p-3">
+                  <TrendingUp className="w-8 h-8 text-blue-700" />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Resumen del Año */}
-          <div className="card bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-purple-700">Este Año</p>
-                <p className="text-2xl font-bold text-purple-900 mt-1">
-                  {formatearMoneda(estadisticas.data.anio.total)}
-                </p>
-                <div className="flex gap-4 mt-2 text-xs">
-                  <span className="text-purple-700">
-                    Efectivo: {formatearMoneda(estadisticas.data.anio.efectivo)}
-                  </span>
-                  <span className="text-purple-700">
-                    Transf: {formatearMoneda(estadisticas.data.anio.transferencia)}
-                  </span>
+          {/* Resumen del Año - Solo visible para administradores y médicos */}
+          {user?.rol !== 'SECRETARIA' && (
+            <div className="card bg-gradient-to-br from-purple-50 to-purple-100 border-purple-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-purple-700">Este Año</p>
+                  <p className="text-2xl font-bold text-purple-900 mt-1">
+                    {formatearMoneda(estadisticas.data.anio.total)}
+                  </p>
+                  <div className="flex gap-4 mt-2 text-xs">
+                    <span className="text-purple-700">
+                      Efectivo: {formatearMoneda(estadisticas.data.anio.efectivo)}
+                    </span>
+                    <span className="text-purple-700">
+                      Transf: {formatearMoneda(estadisticas.data.anio.transferencia)}
+                    </span>
+                  </div>
+                  <p className="text-xs text-purple-600 mt-1">
+                    {estadisticas.data.anio.cantidad} {estadisticas.data.anio.cantidad === 1 ? 'pago' : 'pagos'}
+                  </p>
                 </div>
-                <p className="text-xs text-purple-600 mt-1">
-                  {estadisticas.data.anio.cantidad} {estadisticas.data.anio.cantidad === 1 ? 'pago' : 'pagos'}
-                </p>
-              </div>
-              <div className="bg-purple-200 rounded-full p-3">
-                <BarChart3 className="w-8 h-8 text-purple-700" />
+                <div className="bg-purple-200 rounded-full p-3">
+                  <BarChart3 className="w-8 h-8 text-purple-700" />
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
       )}
 
@@ -163,77 +171,88 @@ export default function ReportesPagos() {
       <div className="card mb-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold">Reporte Detallado</h2>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setPeriodo('dia')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                periodo === 'dia'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
+          {/* Solo mostrar selector de período si no es secretaria */}
+          {user?.rol !== 'SECRETARIA' && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setPeriodo('dia')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  periodo === 'dia'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Día
+              </button>
+              <button
+                onClick={() => {
+                  setPeriodo('mes')
+                  // Asegurar que mesSeleccionado tenga un valor
+                  if (!mesSeleccionado) {
+                    setMesSeleccionado(getMesActual())
+                  }
+                }}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  periodo === 'mes'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Mes
+              </button>
+              <button
+                onClick={() => setPeriodo('anio')}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  periodo === 'anio'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Año
+              </button>
+            </div>
+          )}
+          {/* Para secretaria, mostrar solo el título del período actual (Día) */}
+          {user?.rol === 'SECRETARIA' && (
+            <div className="px-4 py-2 rounded-lg text-sm font-medium bg-primary-600 text-white">
               Día
-            </button>
-            <button
-              onClick={() => {
-                setPeriodo('mes')
-                // Asegurar que mesSeleccionado tenga un valor
-                if (!mesSeleccionado) {
-                  setMesSeleccionado(getMesActual())
-                }
-              }}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                periodo === 'mes'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Mes
-            </button>
-            <button
-              onClick={() => setPeriodo('anio')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                periodo === 'anio'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
-            >
-              Año
-            </button>
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* Filtros según período */}
-        <div className="mb-4 flex gap-4">
-          {periodo === 'mes' && (
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Seleccionar Mes
-              </label>
-              <input
-                type="month"
-                value={mesSeleccionado}
-                onChange={(e) => setMesSeleccionado(e.target.value)}
-                className="input"
-              />
-            </div>
-          )}
-          {periodo === 'anio' && (
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Seleccionar Año
-              </label>
-              <input
-                type="number"
-                value={anioSeleccionado}
-                onChange={(e) => setAnioSeleccionado(e.target.value)}
-                min="2020"
-                max={new Date().getFullYear() + 1}
-                className="input"
-              />
-            </div>
-          )}
-        </div>
+        {/* Filtros según período - Solo mostrar si no es secretaria */}
+        {user?.rol !== 'SECRETARIA' && (
+          <div className="mb-4 flex gap-4">
+            {periodo === 'mes' && (
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Seleccionar Mes
+                </label>
+                <input
+                  type="month"
+                  value={mesSeleccionado}
+                  onChange={(e) => setMesSeleccionado(e.target.value)}
+                  className="input"
+                />
+              </div>
+            )}
+            {periodo === 'anio' && (
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Seleccionar Año
+                </label>
+                <input
+                  type="number"
+                  value={anioSeleccionado}
+                  onChange={(e) => setAnioSeleccionado(e.target.value)}
+                  min="2020"
+                  max={new Date().getFullYear() + 1}
+                  className="input"
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Reporte Detallado */}
         {loadingReporte ? (
@@ -281,8 +300,8 @@ export default function ReportesPagos() {
               </div>
             </div>
 
-            {/* Desglose por Médico (solo para administradores) */}
-            {user?.rol === 'ADMINISTRADOR' && reporte.data.pagosPorMedico && reporte.data.pagosPorMedico.length > 0 && (
+            {/* Desglose por Médico (solo para administradores y secretarias, y solo en reporte del día) */}
+            {(user?.rol === 'ADMINISTRADOR' || (user?.rol === 'SECRETARIA' && periodo === 'dia')) && reporte.data.pagosPorMedico && reporte.data.pagosPorMedico.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold mb-4 flex items-center">
                   <Stethoscope className="w-5 h-5 mr-2 text-primary-600" />
@@ -367,8 +386,8 @@ export default function ReportesPagos() {
                               </div>
                             </div>
 
-                            {/* Desglose por día (solo para reporte mensual) */}
-                            {periodo === 'mes' && medico.pagosPorDia && medico.pagosPorDia.length > 0 && (
+                            {/* Desglose por día (solo para reporte mensual) - Oculto para secretaria */}
+                            {user?.rol !== 'SECRETARIA' && periodoReal === 'mes' && medico.pagosPorDia && medico.pagosPorDia.length > 0 && (
                               <div className="mb-6">
                                 <h4 className="text-sm font-semibold text-gray-700 mb-3">
                                   Desglose por Día - {medico.medicoNombre}
@@ -405,8 +424,8 @@ export default function ReportesPagos() {
                               </div>
                             )}
 
-                            {/* Desglose por mes (solo para reporte anual) */}
-                            {periodo === 'anio' && medico.pagosPorMes && medico.pagosPorMes.length > 0 && (
+                            {/* Desglose por mes (solo para reporte anual) - Oculto para secretaria */}
+                            {user?.rol !== 'SECRETARIA' && periodoReal === 'anio' && medico.pagosPorMes && medico.pagosPorMes.length > 0 && (
                               <div className="mb-6">
                                 <h4 className="text-sm font-semibold text-gray-700 mb-3">
                                   Desglose por Mes - {medico.medicoNombre}
@@ -527,8 +546,8 @@ export default function ReportesPagos() {
               </div>
             )}
 
-            {/* Desglose por día/mes según período */}
-            {periodo === 'mes' && reporte.data.pagosPorDia && reporte.data.pagosPorDia.length > 0 && (
+            {/* Desglose por día/mes según período - Oculto para secretaria */}
+            {user?.rol !== 'SECRETARIA' && periodoReal === 'mes' && reporte.data.pagosPorDia && reporte.data.pagosPorDia.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold mb-4">Desglose por Día</h3>
                 <div className="space-y-2">
@@ -566,7 +585,7 @@ export default function ReportesPagos() {
               </div>
             )}
 
-            {periodo === 'anio' && reporte.data.pagosPorMes && reporte.data.pagosPorMes.length > 0 && (
+            {user?.rol !== 'SECRETARIA' && periodoReal === 'anio' && reporte.data.pagosPorMes && reporte.data.pagosPorMes.length > 0 && (
               <div>
                 <h3 className="text-lg font-semibold mb-4">Desglose por Mes</h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">

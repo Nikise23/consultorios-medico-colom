@@ -24,6 +24,14 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     try {
+      const fullUrl = `${api.defaults.baseURL}/auth/login`
+      console.log('🔐 Intentando login:', { 
+        email, 
+        baseURL: api.defaults.baseURL,
+        fullUrl,
+        hostname: window.location.hostname,
+        origin: window.location.origin
+      })
       const response = await api.post('/auth/login', { email, password })
       const { access_token, usuario } = response.data
 
@@ -33,9 +41,34 @@ export function AuthProvider({ children }) {
 
       return { success: true }
     } catch (error) {
+      console.error('Error en login:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        baseURL: api.defaults.baseURL,
+        url: error.config?.url,
+        fullURL: error.config ? `${api.defaults.baseURL}${error.config.url}` : 'N/A'
+      })
+      
+      // Determinar el mensaje de error más específico
+      let errorMessage = 'Error al iniciar sesión'
+      
+      if (error.code === 'ERR_NETWORK' || error.message === 'Network Error') {
+        errorMessage = 'No se pudo conectar al servidor. Verifica tu conexión.'
+      } else if (error.response?.status === 401) {
+        errorMessage = error.response?.data?.message || 'Credenciales inválidas'
+      } else if (error.response?.status === 404) {
+        errorMessage = 'Servidor no encontrado. Verifica la configuración.'
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
       return {
         success: false,
-        error: error.response?.data?.message || 'Error al iniciar sesión',
+        error: errorMessage,
       }
     }
   }

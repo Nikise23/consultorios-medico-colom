@@ -249,7 +249,100 @@ export default function GestionUsuarios() {
       ) : usuarios?.data?.length > 0 ? (
         <div className="card">
           <h2 className="text-lg font-semibold mb-4">Usuarios Registrados</h2>
-          <div className="space-y-3">
+          
+          {/* Vista de tabla para pantallas grandes */}
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Usuario</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Email</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Rol</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Especialidad</th>
+                  <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Estado</th>
+                  <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usuarios.data.map((usuario) => (
+                  <tr key={usuario.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-3">
+                        {getRolIcon(usuario.rol)}
+                        <span className="font-medium text-gray-900">
+                          {usuario.nombre} {usuario.apellido}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-600">{usuario.email}</td>
+                    <td className="py-3 px-4">
+                      <span className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded">
+                        {getRolLabel(usuario.rol)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-600">
+                      {usuario.medico ? (
+                        <div className="flex flex-col gap-1">
+                          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded w-fit">
+                            Mat: {usuario.medico.matricula}
+                          </span>
+                          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded w-fit">
+                            {usuario.medico.especialidad}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      {usuario.activo ? (
+                        <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">Activo</span>
+                      ) : (
+                        <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded">Inactivo</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleEdit(usuario)}
+                          className="p-1.5 text-primary-600 hover:bg-primary-50 rounded transition-colors"
+                          title="Editar usuario"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingUsuario(usuario)
+                            setShowChangePassword(true)
+                            setPasswordToChange('')
+                          }}
+                          className="p-1.5 text-gray-600 hover:bg-gray-50 rounded transition-colors"
+                          title="Cambiar contraseña"
+                        >
+                          <Lock className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (window.confirm(`¿Estás seguro de que deseas eliminar a ${usuario.nombre} ${usuario.apellido}?`)) {
+                              deleteMutation.mutate(usuario.id)
+                            }
+                          }}
+                          className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Eliminar usuario"
+                          disabled={deleteMutation.isPending}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Vista de tarjetas para pantallas pequeñas */}
+          <div className="lg:hidden space-y-3">
             {usuarios.data.map((usuario) => (
               <div
                 key={usuario.id}
