@@ -337,25 +337,61 @@ export class PagosService {
    * Helper: Obtener fecha de inicio del día en zona horaria de Argentina (UTC-3)
    */
   private getHoyArgentina(): { hoy: Date; mañana: Date; fechaString: string } {
-    // Obtener la fecha actual en la zona horaria de Argentina
+    // Obtener la fecha actual en UTC
     const ahora = new Date();
     
-    // Obtener componentes de fecha en Argentina
-    const fechaArgentina = new Date(ahora.toLocaleString('en-US', { 
-      timeZone: 'America/Argentina/Buenos_Aires'
-    }));
+    // Obtener la fecha en Argentina usando Intl.DateTimeFormat con formatToParts
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
     
-    const anio = fechaArgentina.getFullYear();
-    const mes = String(fechaArgentina.getMonth() + 1).padStart(2, '0');
-    const dia = String(fechaArgentina.getDate()).padStart(2, '0');
+    const partes = formatter.formatToParts(ahora);
+    const anio = partes.find(p => p.type === 'year')?.value || '';
+    const mes = partes.find(p => p.type === 'month')?.value || '';
+    const dia = partes.find(p => p.type === 'day')?.value || '';
     
-    // Crear fecha de inicio del día en Argentina (00:00:00)
-    // Usar formato ISO con timezone offset de Argentina (UTC-3)
+    // Crear fecha de inicio del día en Argentina (00:00:00) en formato ISO
+    // Argentina está en UTC-3, así que creamos la fecha con ese offset
+    // Formato: YYYY-MM-DDTHH:mm:ss-03:00
     const hoyArgentinaISO = `${anio}-${mes}-${dia}T00:00:00-03:00`;
     const hoyArgentina = new Date(hoyArgentinaISO);
     
-    // Convertir a UTC para la consulta en la base de datos
-    // La base de datos almacena en UTC, así que usamos directamente la fecha UTC equivalente
+    // Verificar que la fecha se creó correctamente
+    // Si hay algún problema, usar método alternativo
+    if (isNaN(hoyArgentina.getTime())) {
+      // Método alternativo: calcular manualmente el offset
+      // Obtener la hora actual en Argentina
+      const horaArgentina = ahora.toLocaleString('en-US', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      });
+      
+      // Parsear la fecha manualmente
+      const [fechaPart, horaPart] = horaArgentina.split(', ');
+      const [mesStr, diaStr, anioStr] = fechaPart.split('/');
+      const hoyArgentinaISOAlt = `${anioStr}-${mesStr.padStart(2, '0')}-${diaStr.padStart(2, '0')}T00:00:00-03:00`;
+      const hoy = new Date(hoyArgentinaISOAlt);
+      const mañana = new Date(hoy);
+      mañana.setDate(mañana.getDate() + 1);
+      
+      return {
+        hoy,
+        mañana,
+        fechaString: `${anioStr}-${mesStr.padStart(2, '0')}-${diaStr.padStart(2, '0')}`
+      };
+    }
+    
+    // La fecha ya está en UTC internamente (JavaScript convierte automáticamente)
+    // Para la consulta en la base de datos, usamos directamente esta fecha
     const hoy = new Date(hoyArgentina);
     const mañana = new Date(hoy);
     mañana.setDate(mañana.getDate() + 1);
@@ -373,6 +409,11 @@ export class PagosService {
   async getReporteDia(user?: any) {
     // Usar zona horaria de Argentina para determinar "hoy"
     const { hoy, mañana, fechaString } = this.getHoyArgentina();
+
+    // Log para debugging (remover en producción si es necesario)
+    console.log('🔍 getReporteDia - Fecha Argentina:', fechaString);
+    console.log('🔍 getReporteDia - Hoy UTC:', hoy.toISOString());
+    console.log('🔍 getReporteDia - Mañana UTC:', mañana.toISOString());
 
     // Construir el where clause
     const where: any = {
@@ -524,6 +565,21 @@ export class PagosService {
       orderBy: {
         fechaPago: 'desc',
       },
+    });
+
+    // Log para debugging - ver qué pagos se están retornando
+    console.log('🔍 getReporteDia - Pagos encontrados:', pagos.length);
+    pagos.forEach((pago, index) => {
+      const fechaPagoUTC = new Date(pago.fechaPago);
+      const fechaPagoArgentina = fechaPagoUTC.toLocaleString('es-AR', {
+        timeZone: 'America/Argentina/Buenos_Aires',
+      });
+      console.log(`🔍 Pago ${index + 1}:`, {
+        id: pago.id,
+        monto: pago.monto,
+        fechaPagoUTC: fechaPagoUTC.toISOString(),
+        fechaPagoArgentina,
+      });
     });
 
     // Si es administrador o secretaria, agrupar por médico
