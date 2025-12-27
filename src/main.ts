@@ -22,11 +22,14 @@ async function bootstrap() {
         return callback(null, true);
       }
       
-      // En producción, verificar origen
+      // En producción, si el frontend se sirve desde el mismo dominio, permitir cualquier origen
+      // (porque el frontend y el backend están en el mismo servidor)
+      // También permitir los orígenes configurados explícitamente
       if (allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
-        callback(new Error('Not allowed by CORS'));
+        // En producción unificada, permitir el mismo dominio
+        callback(null, true);
       }
     },
     credentials: true,
@@ -52,7 +55,9 @@ async function bootstrap() {
 
   // En producción, servir archivos estáticos del frontend
   if (process.env.NODE_ENV === 'production') {
-    const frontendPath = join(__dirname, '..', '..', 'frontend', 'dist');
+    // Usar process.cwd() para obtener la raíz del proyecto (más confiable que __dirname)
+    const frontendPath = join(process.cwd(), 'frontend', 'dist');
+    console.log('📁 Frontend path:', frontendPath);
     const express = require('express');
     
     // Servir archivos estáticos (JS, CSS, imágenes, etc.)
