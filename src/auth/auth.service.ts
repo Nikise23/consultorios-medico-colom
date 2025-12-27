@@ -29,25 +29,39 @@ export class AuthService {
   }
 
   async login(loginDto: LoginDto) {
-    const usuario = await this.validateUser(loginDto.email, loginDto.password);
-    
-    const payload = {
-      sub: usuario.id,
-      email: usuario.email,
-      rol: usuario.rol,
-    };
-
-    return {
-      access_token: this.jwtService.sign(payload),
-      usuario: {
-        id: usuario.id,
+    try {
+      const usuario = await this.validateUser(loginDto.email, loginDto.password);
+      
+      const payload = {
+        sub: usuario.id,
         email: usuario.email,
-        nombre: usuario.nombre,
-        apellido: usuario.apellido,
         rol: usuario.rol,
-        tema: usuario.tema,
-      },
-    };
+      };
+
+      // Intentar firmar el token
+      let access_token: string;
+      try {
+        access_token = this.jwtService.sign(payload);
+      } catch (jwtError) {
+        console.error('Error al firmar JWT:', jwtError);
+        throw new Error(`Error al generar token: ${jwtError.message}`);
+      }
+
+      return {
+        access_token,
+        usuario: {
+          id: usuario.id,
+          email: usuario.email,
+          nombre: usuario.nombre,
+          apellido: usuario.apellido,
+          rol: usuario.rol,
+          tema: usuario.tema,
+        },
+      };
+    } catch (error) {
+      console.error('Error en login:', error);
+      throw error;
+    }
   }
 }
 
