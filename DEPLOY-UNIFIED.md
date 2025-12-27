@@ -277,22 +277,42 @@ const port = process.env.PORT || 3000;
 
 ### Error: "Cannot find module '/opt/render/project/src/dist/main'"
 
-**Solución:**
-Este error significa que el build del backend NO se completó. El directorio `dist/` no se generó.
+**⚠️ Este error significa que el build NO se ejecutó o falló silenciosamente.**
+
+**Causas comunes:**
+1. El build command no se ejecutó (verifica que esté configurado correctamente)
+2. El build falló pero no mostró el error completo
+3. `NODE_ENV=production` está configurado (evita instalar devDependencies)
 
 **Pasos para solucionar:**
-1. **Verifica los logs de build completos** en Render - busca errores durante `nest build`
-2. **Asegúrate de que `NODE_ENV` NO esté configurado** como `production` durante el build
-3. **Verifica que `@nestjs/cli` se instale correctamente** (debe estar en devDependencies)
-4. Si el build falla silenciosamente, el problema podría ser:
-   - `NODE_ENV=production` está configurado (evita instalar devDependencies)
-   - El comando `nest build` falla pero no muestra el error completo
-   - Hay un error de TypeScript que impide la compilación
 
-**Debugging:**
-- Revisa los logs completos del build en Render
-- Busca mensajes de error relacionados con TypeScript o NestJS
-- Verifica que el paso `npm run build:backend` se complete exitosamente
+1. **Verifica el Build Command en Render:**
+   - Debe ser exactamente: `npm install && npm run build`
+   - NO debe tener `NODE_ENV=production` configurado antes del build
+
+2. **Revisa los logs COMPLETOS del build:**
+   - En Render, ve a tu servicio → "Events" o "Logs"
+   - Busca la sección "Build Logs" (no solo "Deploy Logs")
+   - Busca errores relacionados con:
+     - `nest build`
+     - TypeScript compilation errors
+     - Missing dependencies
+
+3. **Verifica que el build se ejecute:**
+   - Los logs deben mostrar: `> sistema-historias-clinicas@1.0.0 build`
+   - Debe mostrar: `> sistema-historias-clinicas@1.0.0 build:backend`
+   - Debe mostrar: `> npx nest build`
+   - Si no ves estos mensajes, el build no se está ejecutando
+
+4. **Si el build no se ejecuta:**
+   - Verifica que el Build Command esté configurado correctamente
+   - Asegúrate de que no haya errores de sintaxis en `package.json`
+   - Verifica que el repositorio esté actualizado
+
+5. **Si el build falla:**
+   - Busca el error específico en los logs
+   - Verifica que `@nestjs/cli` se instale (debe aparecer en los logs de `npm install`)
+   - Verifica que no haya errores de TypeScript
 
 ---
 

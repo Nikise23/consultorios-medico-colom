@@ -6,8 +6,8 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "build:backend": "npx nest build",
-    "build:frontend": "cd frontend && npm install && npm run build",
+    "build:backend": "npx nest build || (echo '❌ Build backend failed' && exit 1)",
+    "build:frontend": "cd frontend && npm install && npm run build || (echo '❌ Build frontend failed' && exit 1)",
     "build": "npm run prisma:generate && npm run build:backend && npm run build:frontend",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
