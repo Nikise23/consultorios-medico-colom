@@ -114,11 +114,13 @@ Ya tienes la base de datos en Neon.tech, solo necesitas:
   ```
   
   Este comando automáticamente:
-  1. Instala dependencias del backend
-  2. Instala dependencias del frontend
-  3. Genera el cliente de Prisma
-  4. Construye el backend (NestJS)
+  1. Instala dependencias del backend (incluyendo devDependencies para `nest`)
+  2. Genera el cliente de Prisma
+  3. Construye el backend (NestJS)
+  4. Instala dependencias del frontend
   5. Construye el frontend (React/Vite)
+  
+  **⚠️ Importante:** Asegúrate de que `NODE_ENV` NO esté configurado como `production` durante el build, o las devDependencies no se instalarán. Render instala todas las dependencias por defecto, así que debería funcionar.
   
 - **Start Command:**
   ```bash
@@ -127,15 +129,33 @@ Ya tienes la base de datos en Neon.tech, solo necesitas:
 
 ### 3.3 Variables de Entorno
 
-Agrega las siguientes variables de entorno en Render:
+Agrega las siguientes variables de entorno en Render. **Copia y pega directamente estos valores:**
 
-| Variable | Valor | Descripción |
-|----------|-------|-------------|
-| `DATABASE_URL` | `postgresql://...` | Tu connection string de Neon.tech (sin comillas) |
-| `JWT_SECRET` | `tu-clave-super-secreta-2024` | Genera una clave segura (usa `openssl rand -base64 32`) |
-| `JWT_EXPIRES_IN` | `24h` | Tiempo de expiración del token |
-| `PORT` | `10000` | Render asigna el puerto automáticamente, pero puedes usar 10000 |
-| `NODE_ENV` | `production` | Entorno de producción |
+**📋 Copiar y pegar directamente en Render:**
+
+```
+DATABASE_URL
+postgresql://neondb_owner:npg_C1uq4oVDlpYM@ep-rough-dawn-ahyh6miw-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+
+JWT_SECRET
+tu-clave-super-secreta-2024
+
+JWT_EXPIRES_IN
+24h
+
+PORT
+10000
+
+NODE_ENV
+production
+```
+
+**📝 Instrucciones:**
+1. En Render, ve a la sección **"Environment"** de tu servicio
+2. Para cada variable, haz click en **"Add Environment Variable"**
+3. Copia el **nombre** de la variable (ej: `DATABASE_URL`)
+4. Copia el **valor** correspondiente (sin comillas)
+5. Guarda
 
 **⚠️ Nota:** Ya NO necesitas `FRONTEND_URL` porque todo está en el mismo dominio.
 
