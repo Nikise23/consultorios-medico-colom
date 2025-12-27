@@ -51,6 +51,11 @@ export class PagosService {
       });
     }
 
+    // Obtener la fecha/hora actual en Argentina
+    // Esto asegura que el pago se guarde con la fecha/hora correcta en Argentina,
+    // independientemente de la zona horaria del servidor
+    const fechaPagoArgentina = this.getFechaHoraActualArgentina();
+    
     return this.prisma.pago.create({
       data: {
         pacienteId: createPagoDto.pacienteId,
@@ -59,6 +64,7 @@ export class PagosService {
         tipoPago: createPagoDto.tipoPago,
         numeroComprobante: createPagoDto.numeroComprobante,
         observaciones: createPagoDto.observaciones,
+        fechaPago: fechaPagoArgentina, // Especificar explícitamente la fecha en hora Argentina
       },
       include: {
         paciente: true,
@@ -331,6 +337,54 @@ export class PagosService {
       where: { usuarioId },
     });
     return medico ? medico.id : null;
+  }
+
+  /**
+   * Helper: Obtener la fecha/hora actual en zona horaria de Argentina como Date
+   * 
+   * Esta función obtiene la fecha/hora actual en Argentina y la convierte a un objeto Date
+   * que representa esa fecha/hora en Argentina, pero que se guardará correctamente en UTC.
+   * 
+   * Ejemplo: Si son las 23:28 del 26/12 en Argentina, retorna un Date que representa
+   * 26/12 23:28 -03:00, que internamente es 27/12 02:28 UTC, pero representa correctamente
+   * la fecha/hora en Argentina.
+   */
+  private getFechaHoraActualArgentina(): Date {
+    const ahora = new Date();
+    
+    // Obtener la fecha y hora actual en Argentina
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+    
+    const partes = formatter.formatToParts(ahora);
+    const anio = partes.find(p => p.type === 'year')?.value || '';
+    const mes = partes.find(p => p.type === 'month')?.value || '';
+    const dia = partes.find(p => p.type === 'day')?.value || '';
+    const hora = partes.find(p => p.type === 'hour')?.value || '00';
+    const minuto = partes.find(p => p.type === 'minute')?.value || '00';
+    const segundo = partes.find(p => p.type === 'second')?.value || '00';
+    
+    // Crear fecha en formato ISO con timezone de Argentina (-03:00)
+    // Esto asegura que la fecha represente correctamente la hora en Argentina
+    const fechaArgentinaISO = `${anio}-${mes}-${dia}T${hora}:${minuto}:${segundo}-03:00`;
+    const fechaArgentina = new Date(fechaArgentinaISO);
+    
+    // Verificar que la fecha se creó correctamente
+    if (isNaN(fechaArgentina.getTime())) {
+      // Si falla, usar la fecha actual (fallback)
+      console.warn('⚠️ Error al crear fecha Argentina, usando fecha actual del servidor');
+      return new Date();
+    }
+    
+    return fechaArgentina;
   }
 
   /**
