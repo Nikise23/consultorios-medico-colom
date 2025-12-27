@@ -6,7 +6,7 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "build:backend": "node_modules/.bin/nest build",
+    "build:backend": "npx nest build",
     "build:frontend": "cd frontend && npm install && npm run build",
     "build": "npm run prisma:generate && npm run build:backend && npm run build:frontend",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
