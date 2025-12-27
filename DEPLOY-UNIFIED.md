@@ -148,12 +148,16 @@ JWT_EXPIRES_IN
 
 PORT
 10000
+
+NODE_ENV
+production
 ```
 
 **⚠️ IMPORTANTE sobre NODE_ENV:**
-- **NO configures `NODE_ENV=production` durante el build inicial**
-- Render necesita las `devDependencies` (como `@nestjs/cli`) para construir el proyecto
-- Solo agrega `NODE_ENV=production` DESPUÉS de que el build se complete exitosamente (opcional)
+- **SÍ debes configurar `NODE_ENV=production`** para que el código funcione correctamente
+- Es necesario para que el servidor sirva el frontend y configure CORS correctamente
+- Render instalará las `devDependencies` automáticamente durante el build (no se preocupa por NODE_ENV en el build)
+- Agrega esta variable junto con las demás variables de entorno
 
 **📝 Instrucciones:**
 1. En Render, ve a la sección **"Environment"** de tu servicio
