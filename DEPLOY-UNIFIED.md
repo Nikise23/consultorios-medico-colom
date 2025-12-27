@@ -137,7 +137,8 @@ Agrega las siguientes variables de entorno en Render. **Copia y pega directament
 
 ```
 DATABASE_URL
-postgresql://neondb_owner:npg_C1uq4oVDlpYM@ep-rough-dawn-ahyh6miw-pooler.c-3.us-east-1.aws.neon.tech/neondb?sslmode=require
+postgresql://usuario:password@host/database?sslmode=require
+(Reemplaza con tu connection string real de Neon.tech)
 
 JWT_SECRET
 tu-clave-super-secreta-2024
