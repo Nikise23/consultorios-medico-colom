@@ -334,6 +334,31 @@ export class PagosService {
   }
 
   /**
+   * Helper: Convertir una fecha UTC a fecha en zona horaria de Argentina (formato YYYY-MM-DD)
+   * 
+   * Esta función toma una fecha UTC (como la que viene de la base de datos)
+   * y la convierte a la fecha correspondiente en Argentina.
+   * 
+   * Ejemplo: Si un pago fue el 26/12 23:00 -03:00 = 27/12 02:00 UTC,
+   * esta función debería retornar "2024-12-26" (no "2024-12-27")
+   */
+  private getFechaArgentina(fechaUTC: Date): string {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    
+    const partes = formatter.formatToParts(fechaUTC);
+    const anio = partes.find(p => p.type === 'year')?.value || '';
+    const mes = partes.find(p => p.type === 'month')?.value || '';
+    const dia = partes.find(p => p.type === 'day')?.value || '';
+    
+    return `${anio}-${mes}-${dia}`;
+  }
+
+  /**
    * Helper: Obtener fecha de inicio del día en zona horaria de Argentina (UTC-3)
    * 
    * El día en Argentina va de 00:00:00 -03:00 a 23:59:59 -03:00
@@ -689,10 +714,13 @@ export class PagosService {
         return acc;
       }, {});
 
-      // Agregar desglose por día para cada médico
+      // Agregar desglose por día para cada médico - usar fecha en Argentina
       Object.values(pagosPorMedico).forEach((medico: any) => {
         const pagosPorDia = medico.pagos.reduce((acc: any, pago: any) => {
-          const fecha = new Date(pago.fechaPago).toISOString().split('T')[0];
+          // Convertir la fecha UTC a fecha en Argentina
+          const fechaUTC = new Date(pago.fechaPago);
+          const fecha = this.getFechaArgentina(fechaUTC);
+          
           if (!acc[fecha]) {
             acc[fecha] = {
               fecha,
@@ -703,7 +731,7 @@ export class PagosService {
           }
           if (pago.tipoPago === 'EFECTIVO') {
             acc[fecha].totalEfectivo += Number(pago.monto);
-          } else {
+          } else if (pago.tipoPago === 'TRANSFERENCIA') {
             acc[fecha].totalTransferencia += Number(pago.monto);
           }
           acc[fecha].cantidad += 1;
@@ -925,9 +953,12 @@ export class PagosService {
       .filter((p) => p.tipoPago === 'TRANSFERENCIA')
       .reduce((sum, p) => sum + Number(p.monto), 0);
 
-    // Agrupar por día
+    // Agrupar por día - IMPORTANTE: usar fecha en Argentina, no UTC
     const pagosPorDia = pagos.reduce((acc, pago) => {
-      const fecha = new Date(pago.fechaPago).toISOString().split('T')[0];
+      // Convertir la fecha UTC a fecha en Argentina
+      const fechaUTC = new Date(pago.fechaPago);
+      const fecha = this.getFechaArgentina(fechaUTC);
+      
       if (!acc[fecha]) {
         acc[fecha] = {
           fecha,
@@ -938,9 +969,10 @@ export class PagosService {
       }
       if (pago.tipoPago === 'EFECTIVO') {
         acc[fecha].totalEfectivo += Number(pago.monto);
-      } else {
+      } else if (pago.tipoPago === 'TRANSFERENCIA') {
         acc[fecha].totalTransferencia += Number(pago.monto);
       }
+      // Nota: OBRA_SOCIAL con monto 0 no se suma a efectivo ni transferencia
       acc[fecha].cantidad += 1;
       return acc;
     }, {});
@@ -1045,10 +1077,13 @@ export class PagosService {
         return acc;
       }, {});
 
-      // Agregar desglose por día para cada médico
+      // Agregar desglose por día para cada médico - usar fecha en Argentina
       Object.values(pagosPorMedico).forEach((medico: any) => {
         const pagosPorDiaMedico = medico.pagos.reduce((acc: any, pago: any) => {
-          const fecha = new Date(pago.fechaPago).toISOString().split('T')[0];
+          // Convertir la fecha UTC a fecha en Argentina
+          const fechaUTC = new Date(pago.fechaPago);
+          const fecha = this.getFechaArgentina(fechaUTC);
+          
           if (!acc[fecha]) {
             acc[fecha] = {
               fecha,
@@ -1059,7 +1094,7 @@ export class PagosService {
           }
           if (pago.tipoPago === 'EFECTIVO') {
             acc[fecha].totalEfectivo += Number(pago.monto);
-          } else {
+          } else if (pago.tipoPago === 'TRANSFERENCIA') {
             acc[fecha].totalTransferencia += Number(pago.monto);
           }
           acc[fecha].cantidad += 1;
