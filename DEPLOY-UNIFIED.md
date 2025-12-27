@@ -113,14 +113,16 @@ Ya tienes la base de datos en Neon.tech, solo necesitas:
   npm install && npm run build
   ```
   
+  **⚠️ IMPORTANTE:** NO configures `NODE_ENV=production` antes del build, ya que Render necesita instalar las `devDependencies` (como `@nestjs/cli`) para construir el proyecto.
+  
   Este comando automáticamente:
-  1. Instala dependencias del backend (incluyendo devDependencies para `nest`)
-  2. Genera el cliente de Prisma
-  3. Construye el backend (NestJS)
+  1. Render ejecuta `npm install` (instala todas las dependencias incluyendo devDependencies)
+  2. Genera el cliente de Prisma (`prisma generate`)
+  3. Construye el backend (NestJS usando `node_modules/.bin/nest build`)
   4. Instala dependencias del frontend
   5. Construye el frontend (React/Vite)
   
-  **⚠️ Importante:** Asegúrate de que `NODE_ENV` NO esté configurado como `production` durante el build, o las devDependencies no se instalarán. Render instala todas las dependencias por defecto, así que debería funcionar.
+  **Nota:** El script usa `node_modules/.bin/nest build` para asegurar que funcione correctamente en Render.
   
 - **Start Command:**
   ```bash
