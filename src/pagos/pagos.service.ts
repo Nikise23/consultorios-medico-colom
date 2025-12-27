@@ -650,8 +650,8 @@ export class PagosService {
       // Crear un mapa de pagoId -> medicoId para pagos sin historia clínica
       const pagoMedicoMap = new Map<number, any>();
       
-      // Hacer match entre pagos sin historia clínica y atenciones
-      const pagosSinHistoria = pagos.filter(p => !p.historiaClinica);
+      // Hacer match entre pagos sin historia clínica y atenciones - usar pagosFinales
+      const pagosSinHistoria = pagosFinales.filter(p => !p.historiaClinica);
       pagosSinHistoria.forEach(pago => {
         const atencionesDelPaciente = todasLasAtenciones.filter(a => 
           a.pacienteId === pago.pacienteId
