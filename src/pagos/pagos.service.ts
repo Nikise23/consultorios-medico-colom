@@ -335,12 +335,19 @@ export class PagosService {
 
   /**
    * Helper: Obtener fecha de inicio del día en zona horaria de Argentina (UTC-3)
+   * 
+   * El día en Argentina va de 00:00:00 -03:00 a 23:59:59 -03:00
+   * En UTC eso es de 03:00:00 UTC a 02:59:59 UTC del día siguiente
+   * 
+   * Ejemplo: Si hoy es 27/12 en Argentina:
+   * - Día 27/12 en Argentina: 27/12 00:00:00 -03:00 a 28/12 00:00:00 -03:00
+   * - En UTC: 27/12 03:00:00 UTC a 28/12 03:00:00 UTC
    */
   private getHoyArgentina(): { hoy: Date; mañana: Date; fechaString: string } {
-    // Obtener la fecha actual en UTC
+    // Obtener la fecha y hora actual en la zona horaria de Argentina
     const ahora = new Date();
     
-    // Obtener la fecha en Argentina usando Intl.DateTimeFormat con formatToParts
+    // Usar Intl.DateTimeFormat para obtener la fecha en Argentina de forma confiable
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: 'America/Argentina/Buenos_Aires',
       year: 'numeric',
@@ -353,48 +360,48 @@ export class PagosService {
     const mes = partes.find(p => p.type === 'month')?.value || '';
     const dia = partes.find(p => p.type === 'day')?.value || '';
     
-    // Crear fecha de inicio del día en Argentina (00:00:00) en formato ISO
-    // Argentina está en UTC-3, así que creamos la fecha con ese offset
-    // Formato: YYYY-MM-DDTHH:mm:ss-03:00
+    // Crear fecha de inicio del día en Argentina (00:00:00) con offset -03:00
+    // Esto crea una fecha que representa medianoche en Argentina
     const hoyArgentinaISO = `${anio}-${mes}-${dia}T00:00:00-03:00`;
     const hoyArgentina = new Date(hoyArgentinaISO);
     
     // Verificar que la fecha se creó correctamente
-    // Si hay algún problema, usar método alternativo
     if (isNaN(hoyArgentina.getTime())) {
-      // Método alternativo: calcular manualmente el offset
-      // Obtener la hora actual en Argentina
-      const horaArgentina = ahora.toLocaleString('en-US', {
-        timeZone: 'America/Argentina/Buenos_Aires',
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      });
-      
-      // Parsear la fecha manualmente
-      const [fechaPart, horaPart] = horaArgentina.split(', ');
-      const [mesStr, diaStr, anioStr] = fechaPart.split('/');
-      const hoyArgentinaISOAlt = `${anioStr}-${mesStr.padStart(2, '0')}-${diaStr.padStart(2, '0')}T00:00:00-03:00`;
-      const hoy = new Date(hoyArgentinaISOAlt);
-      const mañana = new Date(hoy);
-      mañana.setDate(mañana.getDate() + 1);
-      
-      return {
-        hoy,
-        mañana,
-        fechaString: `${anioStr}-${mesStr.padStart(2, '0')}-${diaStr.padStart(2, '0')}`
-      };
+      throw new Error(`Error al crear fecha de Argentina: ${hoyArgentinaISO}`);
     }
     
     // La fecha ya está en UTC internamente (JavaScript convierte automáticamente)
-    // Para la consulta en la base de datos, usamos directamente esta fecha
+    // hoyArgentina representa 00:00:00 del día actual en Argentina, convertido a UTC
+    // Por ejemplo: 27/12 00:00:00 -03:00 = 27/12 03:00:00 UTC
+    
     const hoy = new Date(hoyArgentina);
-    const mañana = new Date(hoy);
-    mañana.setDate(mañana.getDate() + 1);
+    
+    // Mañana es el inicio del día siguiente en Argentina
+    // Calcular el día siguiente en Argentina usando Date para manejar cambios de mes/año automáticamente
+    const fechaArgentina = new Date(`${anio}-${mes}-${dia}T12:00:00-03:00`); // Usar mediodía para evitar problemas de zona horaria
+    fechaArgentina.setUTCDate(fechaArgentina.getUTCDate() + 1); // Sumar un día
+    
+    // Obtener la fecha del día siguiente en Argentina
+    const formatterMañana = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Argentina/Buenos_Aires',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    
+    const partesMañana = formatterMañana.formatToParts(fechaArgentina);
+    const anioMañana = partesMañana.find(p => p.type === 'year')?.value || '';
+    const mesMañana = partesMañana.find(p => p.type === 'month')?.value || '';
+    const diaMañana = partesMañana.find(p => p.type === 'day')?.value || '';
+    
+    const mañanaISO = `${anioMañana}-${mesMañana}-${diaMañana}T00:00:00-03:00`;
+    const mañanaArgentina = new Date(mañanaISO);
+    
+    if (isNaN(mañanaArgentina.getTime())) {
+      throw new Error(`Error al crear fecha de mañana en Argentina: ${mañanaISO}`);
+    }
+    
+    const mañana = new Date(mañanaArgentina);
     
     return {
       hoy,
