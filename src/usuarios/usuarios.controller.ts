@@ -51,11 +51,30 @@ export class UsuariosController {
 
   @Patch('theme')
   async updateTheme(@CurrentUser() user: any, @Body() body: any) {
-    // El body puede ser directamente el tema (string o objeto) o estar dentro de una propiedad
-    // Aceptamos ambos formatos para mayor flexibilidad
-    const themeData = body.tema !== undefined ? body.tema : body;
-    console.log('Recibiendo tema:', JSON.stringify(themeData));
-    return this.usuariosService.updateTheme(user.id, themeData);
+    try {
+      // El body puede ser directamente el tema (string o objeto) o estar dentro de una propiedad
+      // Aceptamos ambos formatos para mayor flexibilidad
+      let themeData = body;
+      
+      // Si el body tiene una propiedad 'tema', usarla
+      if (body.tema !== undefined) {
+        themeData = body.tema;
+      }
+      
+      // Si el body es un objeto con propiedades específicas, puede ser el tema directamente
+      // Validar que sea un string (tema predefinido) o un objeto con estructura de tema personalizado
+      if (typeof themeData !== 'string' && typeof themeData !== 'object') {
+        throw new BadRequestException('El tema debe ser un string (tema predefinido) o un objeto (tema personalizado)');
+      }
+      
+      console.log('Recibiendo tema para usuario', user.id, ':', JSON.stringify(themeData));
+      const result = await this.usuariosService.updateTheme(user.id, themeData);
+      console.log('Tema actualizado correctamente');
+      return result;
+    } catch (error) {
+      console.error('Error en updateTheme:', error);
+      throw error;
+    }
   }
 
   @Patch(':id/change-password')

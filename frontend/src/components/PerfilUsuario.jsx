@@ -13,6 +13,7 @@ export default function PerfilUsuario({ onClose }) {
   
   const [activeTab, setActiveTab] = useState('perfil')
   const [showCustomTheme, setShowCustomTheme] = useState(false)
+  const [selectedPredefinedTheme, setSelectedPredefinedTheme] = useState(null) // Tema predefinido seleccionado pero no aplicado
   
   // Cargar tema personalizado guardado o usar valores por defecto (Boca)
   const loadCustomTheme = () => {
@@ -35,6 +36,10 @@ export default function PerfilUsuario({ onClose }) {
     if (typeof theme === 'object' && theme.type === 'custom') {
       setShowCustomTheme(true)
       setCustomColors(theme.data)
+      setSelectedPredefinedTheme(null) // Limpiar selección predefinida
+    } else if (typeof theme === 'string') {
+      setSelectedPredefinedTheme(theme) // Sincronizar con tema actual
+      setShowCustomTheme(false)
     }
   }, [theme])
   const [profileData, setProfileData] = useState({
@@ -425,18 +430,19 @@ export default function PerfilUsuario({ onClose }) {
               {/* Temas predefinidos */}
               <div>
                 <h4 className="font-semibold text-gray-900 mb-3">Temas Predefinidos</h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 max-h-[400px] overflow-y-auto mb-4">
                   {Object.entries(themes).map(([key, themeData]) => {
-                    const isSelected = typeof theme === 'string' && theme === key
+                    const isSelected = selectedPredefinedTheme === key
+                    const isActive = typeof theme === 'string' && theme === key
                     return (
                       <button
                         key={key}
-                    onClick={async () => {
-                      await changeTheme(key)
-                      toast.success(`Tema cambiado a ${themeData.name}`)
-                    }}
+                        onClick={() => {
+                          setSelectedPredefinedTheme(key)
+                          setShowCustomTheme(false) // Ocultar tema personalizado si se selecciona uno predefinido
+                        }}
                         className={`relative p-4 border-2 rounded-lg transition-all hover:scale-105 ${
-                          isSelected
+                          isSelected || isActive
                             ? 'border-primary-600 ring-2 ring-primary-200 bg-primary-50'
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
@@ -447,11 +453,11 @@ export default function PerfilUsuario({ onClose }) {
                             style={{ backgroundColor: themeData.primary[500] }}
                           />
                           <span className={`font-medium text-sm ${
-                            isSelected ? 'text-primary-700' : 'text-gray-700'
+                            isSelected || isActive ? 'text-primary-700' : 'text-gray-700'
                           }`}>
                             {themeData.name}
                           </span>
-                          {isSelected && (
+                          {isActive && (
                             <div className="absolute top-2 right-2">
                               <div className="w-5 h-5 bg-primary-600 rounded-full flex items-center justify-center">
                                 <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
@@ -465,6 +471,25 @@ export default function PerfilUsuario({ onClose }) {
                     )
                   })}
                 </div>
+                
+                {/* Botón para aplicar tema predefinido seleccionado */}
+                {selectedPredefinedTheme && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await changeTheme(selectedPredefinedTheme)
+                        toast.success(`Tema "${themes[selectedPredefinedTheme]?.name}" aplicado correctamente`)
+                      } catch (error) {
+                        console.error('Error al aplicar tema:', error)
+                        toast.error('Error al aplicar el tema. Por favor, intenta nuevamente.')
+                      }
+                    }}
+                    className="btn btn-primary w-full mb-4"
+                  >
+                    <Save className="w-4 h-4 mr-2" />
+                    Aplicar Tema Predefinido: {themes[selectedPredefinedTheme]?.name}
+                  </button>
+                )}
               </div>
 
               <div className="pt-4 border-t border-gray-200">
