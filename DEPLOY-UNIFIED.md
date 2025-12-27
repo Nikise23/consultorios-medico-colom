@@ -113,7 +113,7 @@ Ya tienes la base de datos en Neon.tech, solo necesitas:
   npm install && npm run build
   ```
   
-  **⚠️ IMPORTANTE:** NO configures `NODE_ENV=production` antes del build, ya que Render necesita instalar las `devDependencies` (como `@nestjs/cli`) para construir el proyecto.
+  **⚠️ IMPORTANTE:** Render instalará automáticamente las `devDependencies` durante el build, independientemente de `NODE_ENV`. Configura `NODE_ENV=production` en las variables de entorno (ver sección 3.3).
   
   Este comando automáticamente:
   1. Render ejecuta `npm install` (instala todas las dependencias incluyendo devDependencies)
