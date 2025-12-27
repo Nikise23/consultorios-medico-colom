@@ -624,8 +624,8 @@ export class PagosService {
       });
     });
 
-    // Usar los pagos filtrados en lugar de todos los pagos
-    const pagos = pagosFiltrados;
+    // Usar los pagos filtrados en lugar de todos los pagos para todos los cálculos siguientes
+    const pagosFinales = pagosFiltrados;
 
     // Si es administrador o secretaria, agrupar por médico
     if (user?.rol === 'ADMINISTRADOR' || user?.rol === 'SECRETARIA') {
@@ -755,11 +755,11 @@ export class PagosService {
         );
       });
 
-      const totalEfectivo = pagos
+      const totalEfectivo = pagosFinales
         .filter((p) => p.tipoPago === 'EFECTIVO')
         .reduce((sum, p) => sum + Number(p.monto), 0);
 
-      const totalTransferencia = pagos
+      const totalTransferencia = pagosFinales
         .filter((p) => p.tipoPago === 'TRANSFERENCIA')
         .reduce((sum, p) => sum + Number(p.monto), 0);
 
@@ -768,17 +768,17 @@ export class PagosService {
         totalEfectivo,
         totalTransferencia,
         total: totalEfectivo + totalTransferencia,
-        cantidadPagos: pagos.length,
-        pagos,
+        cantidadPagos: pagosFinales.length,
+        pagos: pagosFinales,
         pagosPorMedico: Object.values(pagosPorMedico),
       };
     }
 
-    const totalEfectivo = pagos
+    const totalEfectivo = pagosFinales
       .filter((p) => p.tipoPago === 'EFECTIVO')
       .reduce((sum, p) => sum + Number(p.monto), 0);
 
-    const totalTransferencia = pagos
+    const totalTransferencia = pagosFinales
       .filter((p) => p.tipoPago === 'TRANSFERENCIA')
       .reduce((sum, p) => sum + Number(p.monto), 0);
 
@@ -787,8 +787,8 @@ export class PagosService {
       totalEfectivo,
       totalTransferencia,
       total: totalEfectivo + totalTransferencia,
-      cantidadPagos: pagos.length,
-      pagos,
+      cantidadPagos: pagosFinales.length,
+      pagos: pagosFinales,
     };
   }
 
