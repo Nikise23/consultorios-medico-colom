@@ -51,28 +51,33 @@ export class UsuariosController {
   }
 
   @Patch('theme')
-  @UsePipes(new ValidationPipe({ skipMissingProperties: true, whitelist: false, forbidNonWhitelisted: false, transform: false }))
+  @UsePipes(new ValidationPipe({ skipMissingProperties: true, whitelist: false, forbidNonWhitelisted: false, transform: false, skipNullProperties: true, skipUndefinedProperties: true }))
   async updateTheme(@CurrentUser() user: any, @Body() body: any) {
     try {
-      // El body puede ser directamente el tema (string o objeto) o estar dentro de una propiedad
-      // Aceptamos ambos formatos para mayor flexibilidad
-      let themeData = body;
+      // El body ahora siempre viene como objeto con propiedad 'tema'
+      // Aceptamos también el formato antiguo por compatibilidad
+      let themeData = null;
       
-      // Si el body es un string directamente (tema predefinido), usarlo
-      if (typeof body === 'string') {
-        themeData = body;
-      }
-      // Si el body tiene una propiedad 'tema', usarla
-      else if (body.tema !== undefined) {
+      // Si el body tiene una propiedad 'tema', usarla (formato nuevo)
+      if (body.tema !== undefined) {
         themeData = body.tema;
       }
-      // Si el body es un objeto con type y data (tema personalizado), usarlo directamente
+      // Si el body es un string directamente (compatibilidad con formato antiguo)
+      else if (typeof body === 'string') {
+        themeData = body;
+      }
+      // Si el body es un objeto con type y data (tema personalizado directo)
       else if (body.type === 'custom' && body.data) {
         themeData = body;
       }
       // Si el body es un objeto vacío o tiene propiedades desconocidas, intentar usarlo como tema
       else {
         themeData = body;
+      }
+      
+      // Validar que tengamos un tema válido
+      if (themeData === null || themeData === undefined) {
+        throw new BadRequestException('El tema no puede estar vacío. Debe ser un string (tema predefinido) o un objeto (tema personalizado)');
       }
       
       // Validar que sea un string (tema predefinido) o un objeto con estructura de tema personalizado

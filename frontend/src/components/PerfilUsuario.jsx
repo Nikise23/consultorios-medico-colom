@@ -8,7 +8,7 @@ import { updateProfile, changePassword } from '../services/api'
 
 export default function PerfilUsuario({ onClose }) {
   const { user, setUser } = useAuth()
-  const { theme, themes, changeTheme, setCustomTheme } = useTheme()
+  const { theme, themes, changeTheme, setCustomTheme, applyThemePreview } = useTheme()
   const queryClient = useQueryClient()
   
   const [activeTab, setActiveTab] = useState('perfil')
@@ -336,13 +336,23 @@ export default function PerfilUsuario({ onClose }) {
                         <input
                           type="color"
                           value={customColors.color1}
-                          onChange={(e) => setCustomColors({ ...customColors, color1: e.target.value })}
+                          onChange={(e) => {
+                            const newColors = { ...customColors, color1: e.target.value }
+                            setCustomColors(newColors)
+                            // Aplicar vista previa del tema personalizado
+                            applyThemePreview({ type: 'custom', data: newColors })
+                          }}
                           className="w-16 h-16 rounded-lg border-2 border-gray-300 cursor-pointer"
                         />
                         <input
                           type="text"
                           value={customColors.color1}
-                          onChange={(e) => setCustomColors({ ...customColors, color1: e.target.value })}
+                          onChange={(e) => {
+                            const newColors = { ...customColors, color1: e.target.value }
+                            setCustomColors(newColors)
+                            // Aplicar vista previa del tema personalizado
+                            applyThemePreview({ type: 'custom', data: newColors })
+                          }}
                           className="flex-1 input text-sm font-mono"
                           placeholder="#0ea5e9"
                         />
@@ -357,13 +367,25 @@ export default function PerfilUsuario({ onClose }) {
                         <input
                           type="color"
                           value={customColors.color2}
-                          onChange={(e) => setCustomColors({ ...customColors, color2: e.target.value })}
+                          onChange={(e) => {
+                            const newColors = { ...customColors, color2: e.target.value }
+                            setCustomColors(newColors)
+                            // Aplicar vista previa del tema personalizado
+                            applyThemePreview({ type: 'custom', data: newColors })
+                          }}
                           className="w-16 h-16 rounded-lg border-2 border-gray-300 cursor-pointer"
                         />
                         <input
                           type="text"
                           value={customColors.color2}
-                          onChange={(e) => setCustomColors({ ...customColors, color2: e.target.value })}
+                          onChange={(e) => {
+                            const newColors = { ...customColors, color2: e.target.value }
+                            setCustomColors(newColors)
+                            // Aplicar vista previa del tema personalizado
+                            if (e.target.value.match(/^#[0-9A-Fa-f]{6}$/)) {
+                              applyThemePreview({ type: 'custom', data: newColors })
+                            }
+                          }}
                           className="flex-1 input text-sm font-mono"
                           placeholder="#fbbf24"
                         />
@@ -440,6 +462,8 @@ export default function PerfilUsuario({ onClose }) {
                         onClick={() => {
                           setSelectedPredefinedTheme(key)
                           setShowCustomTheme(false) // Ocultar tema personalizado si se selecciona uno predefinido
+                          // Aplicar vista previa del tema seleccionado
+                          applyThemePreview(key)
                         }}
                         className={`relative p-4 border-2 rounded-lg transition-all hover:scale-105 ${
                           isSelected || isActive
@@ -495,7 +519,15 @@ export default function PerfilUsuario({ onClose }) {
               <div className="pt-4 border-t border-gray-200">
                 <button
                   type="button"
-                  onClick={onClose}
+                  onClick={() => {
+                    // Restaurar el tema original antes de cerrar (si no se aplicó ningún cambio)
+                    if (typeof theme === 'string') {
+                      applyThemePreview(theme)
+                    } else if (typeof theme === 'object' && theme.type === 'custom') {
+                      applyThemePreview(theme)
+                    }
+                    onClose()
+                  }}
                   className="btn btn-primary w-full"
                 >
                   Cerrar

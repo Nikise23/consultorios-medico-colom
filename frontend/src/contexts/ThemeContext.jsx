@@ -251,34 +251,41 @@ function createCustomTheme(color1, color2, name = 'Personalizado') {
 }
 
 export function ThemeProvider({ children }) {
-  const { user } = useAuth()
+  const { user, setUser } = useAuth()
   const [theme, setTheme] = useState('azul')
   const [loading, setLoading] = useState(true)
 
   // Cargar tema del usuario cuando cambia el usuario
   useEffect(() => {
     if (user?.id) {
-      // Primero intentar cargar desde el usuario actual (puede venir del login)
-      if (user.tema) {
-        const temaData = user.tema
-        if (typeof temaData === 'string') {
-          // Tema predefinido
-          setTheme(temaData)
-        } else if (temaData && temaData.type === 'custom') {
-          // Tema personalizado
-          setTheme({ type: 'custom', data: temaData.data })
-        } else {
-          setTheme('azul')
-        }
-        setLoading(false)
-      } else {
-        // Si no viene en el usuario, cargar desde el backend
-        const loadUserTheme = async () => {
-          try {
-            const response = await getProfile()
-            const userData = response?.data?.data || response?.data || response
-            if (userData?.tema) {
-              const temaData = userData.tema
+      // Siempre cargar desde el backend para asegurar que tenemos la versión más reciente
+      const loadUserTheme = async () => {
+        try {
+          const response = await getProfile()
+          const userData = response?.data?.data || response?.data || response
+          if (userData?.tema) {
+            const temaData = userData.tema
+            if (typeof temaData === 'string') {
+              // Tema predefinido
+              setTheme(temaData)
+              // Actualizar el usuario en AuthContext y localStorage con el tema del backend
+              const updatedUser = { ...user, tema: temaData }
+              setUser(updatedUser)
+              localStorage.setItem('user', JSON.stringify(updatedUser))
+            } else if (temaData && temaData.type === 'custom') {
+              // Tema personalizado
+              setTheme({ type: 'custom', data: temaData.data })
+              // Actualizar el usuario en AuthContext y localStorage con el tema del backend
+              const updatedUser = { ...user, tema: temaData }
+              setUser(updatedUser)
+              localStorage.setItem('user', JSON.stringify(updatedUser))
+            } else {
+              setTheme('azul')
+            }
+          } else {
+            // Si no hay tema en el backend, usar el del usuario actual o default
+            if (user.tema) {
+              const temaData = user.tema
               if (typeof temaData === 'string') {
                 setTheme(temaData)
               } else if (temaData && temaData.type === 'custom') {
@@ -289,19 +296,63 @@ export function ThemeProvider({ children }) {
             } else {
               setTheme('azul')
             }
-          } catch (error) {
-            console.error('Error al cargar tema del usuario:', error)
+          }
+        } catch (error) {
+          console.error('Error al cargar tema del usuario:', error)
+          // Si falla, usar el tema del usuario actual o default
+          if (user.tema) {
+            const temaData = user.tema
+            if (typeof temaData === 'string') {
+              setTheme(temaData)
+            } else if (temaData && temaData.type === 'custom') {
+              setTheme({ type: 'custom', data: temaData.data })
+            } else {
+              setTheme('azul')
+            }
+          } else {
             setTheme('azul')
           }
-          setLoading(false)
         }
-        loadUserTheme()
+        setLoading(false)
       }
+      loadUserTheme()
     } else {
       setTheme('azul')
       setLoading(false)
     }
-  }, [user?.id, user?.tema])
+  }, [user?.id, setUser])
+
+  // Función para aplicar un tema visualmente (sin guardar)
+  const applyThemePreview = (themeKeyOrObject) => {
+    let themeData
+    
+    if (typeof themeKeyOrObject === 'object' && themeKeyOrObject.type === 'custom') {
+      // Tema personalizado
+      themeData = createCustomTheme(themeKeyOrObject.data.color1, themeKeyOrObject.data.color2, themeKeyOrObject.data.name)
+    } else if (typeof themeKeyOrObject === 'string' && themes[themeKeyOrObject]) {
+      // Tema predefinido
+      themeData = themes[themeKeyOrObject]
+    } else {
+      return // No aplicar si no es válido
+    }
+    
+    if (themeData) {
+      const root = document.documentElement
+      
+      // Aplicar colores primarios como variables CSS
+      Object.entries(themeData.primary).forEach(([key, value]) => {
+        root.style.setProperty(`--color-primary-${key}`, value)
+      })
+      
+      // Aplicar color de fondo
+      root.style.setProperty('--theme-bg-color', themeData.bgColor)
+      root.style.setProperty('--theme-nav-bg', themeData.secondary ? themeData.secondary[100] : themeData.primary[50])
+      root.style.setProperty('--theme-nav-border', themeData.secondary ? themeData.secondary[300] : themeData.primary[200])
+      root.style.setProperty('--theme-waiting-bg', themeData.secondary ? themeData.secondary[100] : themeData.primary[50])
+      root.style.setProperty('--theme-waiting-border', themeData.secondary ? themeData.secondary[300] : themeData.primary[200])
+      document.body.style.backgroundColor = themeData.bgColor
+    }
+  }
 
   useEffect(() => {
     // Aplicar el tema al documento
@@ -340,7 +391,12 @@ export function ThemeProvider({ children }) {
       // Guardar en el backend si hay usuario logueado
       if (user?.id) {
         try {
-          await updateTheme(newTheme)
+          // Envolver el string en un objeto para evitar problemas con ValidationPipe
+          await updateTheme({ tema: newTheme })
+          // Actualizar el usuario en AuthContext y localStorage con el nuevo tema
+          const updatedUser = { ...user, tema: newTheme }
+          setUser(updatedUser)
+          localStorage.setItem('user', JSON.stringify(updatedUser))
         } catch (error) {
           console.error('Error al guardar tema:', error)
         }
@@ -355,7 +411,12 @@ export function ThemeProvider({ children }) {
     // Guardar en el backend si hay usuario logueado
     if (user?.id) {
       try {
-        await updateTheme(themeObj)
+        // Envolver en un objeto para consistencia con el formato del backend
+        await updateTheme({ tema: themeObj })
+        // Actualizar el usuario en AuthContext y localStorage con el nuevo tema
+        const updatedUser = { ...user, tema: themeObj }
+        setUser(updatedUser)
+        localStorage.setItem('user', JSON.stringify(updatedUser))
       } catch (error) {
         console.error('Error al guardar tema personalizado:', error)
       }
@@ -363,7 +424,7 @@ export function ThemeProvider({ children }) {
   }
 
   return (
-    <ThemeContext.Provider value={{ theme, themes, changeTheme, setCustomTheme }}>
+    <ThemeContext.Provider value={{ theme, themes, changeTheme, setCustomTheme, applyThemePreview }}>
       {children}
     </ThemeContext.Provider>
   )

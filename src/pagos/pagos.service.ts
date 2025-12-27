@@ -334,13 +334,45 @@ export class PagosService {
   }
 
   /**
+   * Helper: Obtener fecha de inicio del día en zona horaria de Argentina (UTC-3)
+   */
+  private getHoyArgentina(): { hoy: Date; mañana: Date; fechaString: string } {
+    // Obtener la fecha actual en la zona horaria de Argentina
+    const ahora = new Date();
+    
+    // Obtener componentes de fecha en Argentina
+    const fechaArgentina = new Date(ahora.toLocaleString('en-US', { 
+      timeZone: 'America/Argentina/Buenos_Aires'
+    }));
+    
+    const anio = fechaArgentina.getFullYear();
+    const mes = String(fechaArgentina.getMonth() + 1).padStart(2, '0');
+    const dia = String(fechaArgentina.getDate()).padStart(2, '0');
+    
+    // Crear fecha de inicio del día en Argentina (00:00:00)
+    // Usar formato ISO con timezone offset de Argentina (UTC-3)
+    const hoyArgentinaISO = `${anio}-${mes}-${dia}T00:00:00-03:00`;
+    const hoyArgentina = new Date(hoyArgentinaISO);
+    
+    // Convertir a UTC para la consulta en la base de datos
+    // La base de datos almacena en UTC, así que usamos directamente la fecha UTC equivalente
+    const hoy = new Date(hoyArgentina);
+    const mañana = new Date(hoy);
+    mañana.setDate(mañana.getDate() + 1);
+    
+    return {
+      hoy,
+      mañana,
+      fechaString: `${anio}-${mes}-${dia}`
+    };
+  }
+
+  /**
    * Obtener reporte de pagos del día actual
    */
   async getReporteDia(user?: any) {
-    const hoy = new Date();
-    hoy.setHours(0, 0, 0, 0);
-    const mañana = new Date(hoy);
-    mañana.setDate(mañana.getDate() + 1);
+    // Usar zona horaria de Argentina para determinar "hoy"
+    const { hoy, mañana, fechaString } = this.getHoyArgentina();
 
     // Construir el where clause
     const where: any = {
@@ -373,7 +405,7 @@ export class PagosService {
         if (atenciones.length === 0) {
           // Si no hay atenciones, retornar vacío
           return {
-            fecha: hoy.toISOString().split('T')[0],
+            fecha: fechaString,
             totalEfectivo: 0,
             totalTransferencia: 0,
             total: 0,
@@ -465,7 +497,7 @@ export class PagosService {
       } else {
         // Si no tiene médico asociado, retornar vacío
         return {
-          fecha: hoy.toISOString().split('T')[0],
+          fecha: fechaString,
           totalEfectivo: 0,
           totalTransferencia: 0,
           total: 0,
@@ -628,7 +660,7 @@ export class PagosService {
         .reduce((sum, p) => sum + Number(p.monto), 0);
 
       return {
-        fecha: hoy.toISOString().split('T')[0],
+        fecha: fechaString,
         totalEfectivo,
         totalTransferencia,
         total: totalEfectivo + totalTransferencia,
@@ -647,7 +679,7 @@ export class PagosService {
       .reduce((sum, p) => sum + Number(p.monto), 0);
 
     return {
-      fecha: hoy.toISOString().split('T')[0],
+      fecha: fechaString,
       totalEfectivo,
       totalTransferencia,
       total: totalEfectivo + totalTransferencia,
