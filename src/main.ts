@@ -52,7 +52,7 @@ async function bootstrap() {
 
   // En producción, servir archivos estáticos del frontend
   if (process.env.NODE_ENV === 'production') {
-    const frontendPath = join(__dirname, '..', 'frontend', 'dist');
+    const frontendPath = join(__dirname, '..', '..', 'frontend', 'dist');
     const express = require('express');
     
     // Servir archivos estáticos (JS, CSS, imágenes, etc.)
