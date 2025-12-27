@@ -50,10 +50,10 @@ export class EnviarAEsperaDto {
   @IsOptional()
   actualizarDatos?: boolean;
 
-  // Datos del pago (obligatorio)
+  // Datos del pago (obligatorio, puede ser 0 si obra social cubre)
   @IsNumber()
   @IsNotEmpty()
-  @Min(0.01)
+  @Min(0)
   monto: number;
 
   @IsEnum(TipoPago)
@@ -67,6 +67,10 @@ export class EnviarAEsperaDto {
   @IsString()
   @IsOptional()
   observacionesPago?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  prioridad?: boolean;
 }
 
 

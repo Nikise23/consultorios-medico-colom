@@ -137,6 +137,9 @@ export const updateProfile = (data) =>
 export const changePassword = (data) => 
   api.patch('/usuarios/change-password', data)
 
+export const updateTheme = (themeData) => 
+  api.patch('/usuarios/theme', themeData)
+
 export const adminChangePassword = (userId, data) => 
   api.patch(`/usuarios/${userId}/change-password`, data)
 

@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [react()],
+  base: '/', // Base path para producción (mismo dominio)
   server: {
     port: 3001,
     host: true, // Permite conexiones desde la red local
@@ -25,6 +26,18 @@ export default defineConfig({
             console.log('✅ Response:', proxyRes.statusCode, req.url);
           });
         },
+      },
+    },
+  },
+  build: {
+    outDir: 'dist',
+    assetsDir: 'assets',
+    // Asegurar que las rutas sean relativas
+    rollupOptions: {
+      output: {
+        assetFileNames: 'assets/[name].[hash].[ext]',
+        chunkFileNames: 'assets/[name].[hash].js',
+        entryFileNames: 'assets/[name].[hash].js',
       },
     },
   },

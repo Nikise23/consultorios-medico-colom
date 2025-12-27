@@ -49,6 +49,11 @@ export class UsuariosController {
     return this.usuariosService.changePassword(user.id, changePasswordDto);
   }
 
+  @Patch('theme')
+  async updateTheme(@CurrentUser() user: any, @Body() themeData: any) {
+    return this.usuariosService.updateTheme(user.id, themeData);
+  }
+
   @Patch(':id/change-password')
   @Roles(Rol.ADMINISTRADOR)
   async adminChangePassword(@Param('id', ParseIntPipe) id: number, @Body() adminChangePasswordDto: AdminChangePasswordDto) {

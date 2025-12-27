@@ -36,8 +36,10 @@ export function AuthProvider({ children }) {
       const { access_token, usuario } = response.data
 
       localStorage.setItem('token', access_token)
-      localStorage.setItem('user', JSON.stringify(usuario))
-      setUser(usuario)
+      // Incluir tema si viene en la respuesta
+      const userWithTheme = { ...usuario, tema: usuario.tema }
+      localStorage.setItem('user', JSON.stringify(userWithTheme))
+      setUser(userWithTheme)
 
       return { success: true }
     } catch (error) {

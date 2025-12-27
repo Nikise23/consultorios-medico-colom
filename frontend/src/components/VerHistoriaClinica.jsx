@@ -173,19 +173,21 @@ export default function VerHistoriaClinica({ historia, onClose }) {
                           className="p-3 border border-gray-200 rounded-lg bg-white"
                         >
                           <div className="flex items-center justify-between mb-2">
-                            <span className="text-xs text-gray-500 flex items-center">
-                              <Clock className="w-3 h-3 mr-1" />
-                              {new Date(historiaItem.fechaConsulta).toLocaleDateString('es-AR', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })}
-                            </span>
-                            {historiaItem.medico?.usuario && (
-                              <span className="text-xs text-gray-500">
-                                Dr. {historiaItem.medico.usuario.nombre} {historiaItem.medico.usuario.apellido}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500 flex items-center">
+                                <Clock className="w-3 h-3 mr-1" />
+                                {new Date(historiaItem.fechaConsulta).toLocaleDateString('es-AR', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
                               </span>
-                            )}
+                              {historiaItem.medico?.usuario && (
+                                <span className="text-xs text-gray-600 font-medium">
+                                  • Dr. {historiaItem.medico.usuario.nombre} {historiaItem.medico.usuario.apellido}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <p className="text-gray-700 whitespace-pre-wrap text-sm">
                             {historiaItem.observaciones || 'Sin contenido'}

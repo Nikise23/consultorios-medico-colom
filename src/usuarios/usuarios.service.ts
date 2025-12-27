@@ -257,6 +257,23 @@ export class UsuariosService {
     });
   }
 
+  async updateTheme(userId: number, themeData: any) {
+    return this.prisma.usuario.update({
+      where: { id: userId },
+      data: {
+        tema: themeData,
+      },
+      select: {
+        id: true,
+        email: true,
+        nombre: true,
+        apellido: true,
+        rol: true,
+        tema: true,
+      },
+    });
+  }
+
   async adminChangePassword(userId: number, adminChangePasswordDto: AdminChangePasswordDto) {
     // Verificar que el usuario existe
     await this.findOne(userId);

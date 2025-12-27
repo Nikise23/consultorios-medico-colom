@@ -31,6 +31,7 @@ export class AtencionesService {
         pacienteId: createAtencionDto.pacienteId,
         medicoId: createAtencionDto.medicoId,
         estado: EstadoAtencion.EN_ESPERA,
+        prioridad: createAtencionDto.prioridad || false,
         observaciones: createAtencionDto.observaciones,
       },
       include: {
@@ -89,9 +90,10 @@ export class AtencionesService {
   /**
    * Obtener todas las atenciones activas (EN_ESPERA) para un médico
    * Ordenadas por hora de ingreso (más antiguas primero)
+   * Incluye pagos asociados para mostrar observaciones
    */
   async findActivasByMedico(medicoId: number) {
-    return this.prisma.atencion.findMany({
+    const atenciones = await this.prisma.atencion.findMany({
       where: {
         medicoId,
         estado: EstadoAtencion.EN_ESPERA,
@@ -103,13 +105,46 @@ export class AtencionesService {
         horaIngreso: 'asc',
       },
     });
+
+    // Agregar pagos asociados a cada atención
+    const atencionesConPagos = await Promise.all(
+      atenciones.map(async (atencion) => {
+        const fechaAtencion = new Date(atencion.createdAt);
+        const fechaDesde = new Date(fechaAtencion);
+        fechaDesde.setHours(fechaDesde.getHours() - 2);
+        const fechaHasta = new Date(fechaAtencion);
+        fechaHasta.setHours(fechaHasta.getHours() + 1);
+
+        const pagoAsociado = await this.prisma.pago.findFirst({
+          where: {
+            pacienteId: atencion.pacienteId,
+            fechaPago: {
+              gte: fechaDesde,
+              lte: fechaHasta,
+            },
+            historiaClinicaId: null,
+          },
+          orderBy: {
+            fechaPago: 'desc',
+          },
+        });
+
+        return {
+          ...atencion,
+          pagoAsociado,
+        };
+      }),
+    );
+
+    return atencionesConPagos;
   }
 
   /**
    * Obtener todas las atenciones activas (EN_ESPERA) de todos los médicos
+   * Incluye pagos asociados para mostrar observaciones
    */
   async findActivas() {
-    return this.prisma.atencion.findMany({
+    const atenciones = await this.prisma.atencion.findMany({
       where: {
         estado: EstadoAtencion.EN_ESPERA,
       },
@@ -125,6 +160,38 @@ export class AtencionesService {
         horaIngreso: 'asc',
       },
     });
+
+    // Agregar pagos asociados a cada atención
+    const atencionesConPagos = await Promise.all(
+      atenciones.map(async (atencion) => {
+        const fechaAtencion = new Date(atencion.createdAt);
+        const fechaDesde = new Date(fechaAtencion);
+        fechaDesde.setHours(fechaDesde.getHours() - 2);
+        const fechaHasta = new Date(fechaAtencion);
+        fechaHasta.setHours(fechaHasta.getHours() + 1);
+
+        const pagoAsociado = await this.prisma.pago.findFirst({
+          where: {
+            pacienteId: atencion.pacienteId,
+            fechaPago: {
+              gte: fechaDesde,
+              lte: fechaHasta,
+            },
+            historiaClinicaId: null,
+          },
+          orderBy: {
+            fechaPago: 'desc',
+          },
+        });
+
+        return {
+          ...atencion,
+          pagoAsociado,
+        };
+      }),
+    );
+
+    return atencionesConPagos;
   }
 
   /**
@@ -227,7 +294,7 @@ export class AtencionesService {
       },
     });
 
-    // Verificar si cada atención tiene historia clínica
+    // Verificar si cada atención tiene historia clínica y agregar pagos asociados
     const atencionesConHistoria = await Promise.all(
       atenciones.map(async (atencion) => {
         const historia = await this.prisma.historiaClinica.findUnique({
@@ -235,10 +302,32 @@ export class AtencionesService {
           select: { id: true, createdAt: true },
         });
 
+        // Buscar pago asociado
+        const fechaAtencion = new Date(atencion.createdAt);
+        const fechaDesde = new Date(fechaAtencion);
+        fechaDesde.setHours(fechaDesde.getHours() - 2);
+        const fechaHasta = new Date(fechaAtencion);
+        fechaHasta.setHours(fechaHasta.getHours() + 1);
+
+        const pagoAsociado = await this.prisma.pago.findFirst({
+          where: {
+            pacienteId: atencion.pacienteId,
+            fechaPago: {
+              gte: fechaDesde,
+              lte: fechaHasta,
+            },
+            historiaClinicaId: null,
+          },
+          orderBy: {
+            fechaPago: 'desc',
+          },
+        });
+
         return {
           ...atencion,
           tieneHistoriaClinica: !!historia,
           historiaId: historia?.id || null,
+          pagoAsociado,
         };
       }),
     );
@@ -250,8 +339,9 @@ export class AtencionesService {
    * Cancelar una atención (eliminar de sala de espera)
    * Solo se puede cancelar si está en estado EN_ESPERA o ATENDIENDO
    * También elimina los pagos asociados que se crearon al enviar el paciente a sala de espera
+   * @param medicoId - Opcional. Si se proporciona, valida que el médico sea el asignado
    */
-  async cancelar(id: number, medicoId: number) {
+  async cancelar(id: number, medicoId?: number) {
     const atencion = await this.prisma.atencion.findUnique({
       where: { id },
       include: {
@@ -269,12 +359,18 @@ export class AtencionesService {
       throw new NotFoundException(`Atención con ID ${id} no encontrada`);
     }
 
-    if (atencion.medicoId !== medicoId) {
+    // Solo validar médico si se proporciona (para médicos, no para secretarias)
+    if (medicoId !== undefined && atencion.medicoId !== medicoId) {
       throw new BadRequestException('Solo el médico asignado puede cancelar esta atención');
     }
 
     if (atencion.estado === EstadoAtencion.FINALIZADO) {
       throw new BadRequestException('No se puede cancelar una atención finalizada');
+    }
+
+    // Si no se proporciona medicoId (secretaria), solo puede cancelar atenciones en espera
+    if (medicoId === undefined && atencion.estado !== EstadoAtencion.EN_ESPERA) {
+      throw new BadRequestException('Solo se pueden remover pacientes de sala de espera, no de atención');
     }
 
     // Buscar y eliminar pagos asociados a esta atención
@@ -329,6 +425,7 @@ export class AtencionesService {
 
   /**
    * Obtener todas las atenciones activas (EN_ESPERA y ATENDIENDO) para la secretaria
+   * Incluye pagos asociados para mostrar observaciones
    */
   async findActivasParaSecretaria() {
     try {
@@ -361,7 +458,37 @@ export class AtencionesService {
         },
       });
 
-      return atenciones;
+      // Agregar pagos asociados a cada atención
+      const atencionesConPagos = await Promise.all(
+        atenciones.map(async (atencion) => {
+          const fechaAtencion = new Date(atencion.createdAt);
+          const fechaDesde = new Date(fechaAtencion);
+          fechaDesde.setHours(fechaDesde.getHours() - 2);
+          const fechaHasta = new Date(fechaAtencion);
+          fechaHasta.setHours(fechaHasta.getHours() + 1);
+
+          const pagoAsociado = await this.prisma.pago.findFirst({
+            where: {
+              pacienteId: atencion.pacienteId,
+              fechaPago: {
+                gte: fechaDesde,
+                lte: fechaHasta,
+              },
+              historiaClinicaId: null,
+            },
+            orderBy: {
+              fechaPago: 'desc',
+            },
+          });
+
+          return {
+            ...atencion,
+            pagoAsociado,
+          };
+        }),
+      );
+
+      return atencionesConPagos;
     } catch (error) {
       console.error('Error en findActivasParaSecretaria:', error);
       throw error;

@@ -21,9 +21,12 @@ export default function Layout() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col relative">
+    <div className="min-h-screen flex flex-col relative" style={{ backgroundColor: 'var(--theme-bg-color, #f9fafb)' }}>
       {/* Navbar */}
-      <nav className="bg-white shadow-sm border-b border-gray-200">
+      <nav className="shadow-sm border-b" style={{ 
+        backgroundColor: 'var(--theme-nav-bg, #ffffff)',
+        borderColor: 'var(--theme-nav-border, #e5e7eb)'
+      }}>
         <div className="max-w-7xl xl:max-w-[1400px] 2xl:max-w-[1600px] mx-auto px-2 sm:px-4 lg:px-6 xl:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center min-w-0 flex-1">

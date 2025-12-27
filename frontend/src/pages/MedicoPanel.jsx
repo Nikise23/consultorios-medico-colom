@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Clock, Phone, FileText, User, Calendar, Edit, X } from 'lucide-react'
+import { Clock, Phone, FileText, User, Calendar, Edit, X, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getAtencionesActivas, atenderPaciente, getAtencionesAtendiendo, getHistoriasMedicoHoy, cancelarAtencion } from '../services/api'
 
@@ -168,28 +168,50 @@ export default function MedicoPanel() {
             </div>
           ) : atencionesEspera?.data?.length > 0 ? (
             <div className="space-y-3">
-              {atencionesEspera.data.map((atencion) => (
-                <div
-                  key={atencion.id}
-                  className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors"
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center mb-2">
-                        <User className="w-5 h-5 text-gray-400 mr-2" />
-                        <p className="font-medium text-gray-900">
-                          {atencion.paciente?.nombre} {atencion.paciente?.apellido}
-                        </p>
+              {atencionesEspera.data.map((atencion) => {
+                const tienePrioridad = atencion.prioridad === true
+                return (
+                  <div
+                    key={atencion.id}
+                    className={`p-4 border rounded-lg transition-colors ${
+                      tienePrioridad
+                        ? 'border-red-400 bg-red-50 shadow-md ring-2 ring-red-200 hover:border-red-500'
+                        : 'hover:border-primary-300'
+                    }`}
+                    style={!tienePrioridad ? {
+                      backgroundColor: 'var(--theme-waiting-bg, #ffffff)',
+                      borderColor: 'var(--theme-waiting-border, #e5e7eb)'
+                    } : {}}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center mb-2">
+                          <User className={`w-5 h-5 mr-2 ${tienePrioridad ? 'text-red-600' : 'text-gray-400'}`} />
+                          <p className={`font-medium ${tienePrioridad ? 'text-red-900' : 'text-gray-900'}`}>
+                            {atencion.paciente?.nombre} {atencion.paciente?.apellido}
+                          </p>
+                          {tienePrioridad && (
+                            <div className="ml-2 flex items-center">
+                              <AlertCircle className="w-4 h-4 text-red-600" />
+                              <span className="ml-1 text-xs font-bold text-red-700">PRIORIDAD/OPERADO</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className={`text-sm space-y-1 ${tienePrioridad ? 'text-red-700' : 'text-gray-600'}`}>
+                          <p>DNI: {atencion.paciente?.dni}</p>
+                          <p>Obra Social: {atencion.paciente?.obraSocial}</p>
+                          <p className="text-xs text-gray-500">
+                            Ingreso: {new Date(atencion.horaIngreso).toLocaleTimeString()}
+                          </p>
+                          <TiempoEspera horaIngreso={atencion.horaIngreso} />
+                          {atencion.pagoAsociado?.observaciones && (
+                            <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                              <p className="font-semibold text-blue-900 mb-1">Observación de Pago:</p>
+                              <p className="text-blue-800">{atencion.pagoAsociado.observaciones}</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <p>DNI: {atencion.paciente?.dni}</p>
-                        <p>Obra Social: {atencion.paciente?.obraSocial}</p>
-                        <p className="text-xs text-gray-500">
-                          Ingreso: {new Date(atencion.horaIngreso).toLocaleTimeString()}
-                        </p>
-                        <TiempoEspera horaIngreso={atencion.horaIngreso} />
-                      </div>
-                    </div>
                     <div className="flex flex-col gap-2 ml-4">
                       <button
                         onClick={() => handleLlamarPaciente(atencion.id)}
@@ -211,7 +233,8 @@ export default function MedicoPanel() {
                     </div>
                   </div>
                 </div>
-              ))}
+                )
+              })}
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">

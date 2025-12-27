@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, DollarSign, CreditCard, Wallet, Edit, Trash2, X } from 'lucide-react'
+import { Search, DollarSign, CreditCard, Wallet, Edit, Trash2, X, Building2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { searchPacientes, getPagosByPaciente, createPago, searchPagos, deletePago } from '../services/api'
 import PagoForm from '../components/PagoForm'
@@ -91,7 +91,19 @@ export default function PagosPanel() {
     setSearchValue('')
   }
 
-  const getTipoPagoIcon = (tipo) => {
+  const getTipoPagoIcon = (tipo, monto = 0) => {
+    // Convertir monto a número si es string
+    const montoNum = typeof monto === 'string' ? parseFloat(monto) : monto
+    
+    // Si el monto es 0, siempre mostrar Obra Social
+    if (montoNum === 0 || isNaN(montoNum)) {
+      return <Building2 className="w-4 h-4 text-orange-600" />
+    }
+    
+    if (tipo === 'OBRA_SOCIAL') {
+      return <Building2 className="w-4 h-4 text-orange-600" />
+    }
+    
     return tipo === 'EFECTIVO' ? (
       <Wallet className="w-4 h-4 text-green-600" />
     ) : (
@@ -99,7 +111,19 @@ export default function PagosPanel() {
     )
   }
 
-  const getTipoPagoLabel = (tipo) => {
+  const getTipoPagoLabel = (tipo, monto = 0) => {
+    // Convertir monto a número si es string
+    const montoNum = typeof monto === 'string' ? parseFloat(monto) : monto
+    
+    // Si el monto es 0, siempre mostrar Obra Social
+    if (montoNum === 0 || isNaN(montoNum)) {
+      return 'Obra Social'
+    }
+    
+    if (tipo === 'OBRA_SOCIAL') {
+      return 'Obra Social'
+    }
+    
     return tipo === 'EFECTIVO' ? 'Efectivo' : 'Transferencia'
   }
 
@@ -367,8 +391,8 @@ export default function PagosPanel() {
                       </td>
                       <td className="py-3 px-4 text-sm">
                         <div className="flex items-center gap-2">
-                          {getTipoPagoIcon(pago.tipoPago)}
-                          <span className="text-gray-700">{getTipoPagoLabel(pago.tipoPago)}</span>
+                          {getTipoPagoIcon(pago.tipoPago, pago.monto)}
+                          <span className="text-gray-700">{getTipoPagoLabel(pago.tipoPago, pago.monto)}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-sm text-gray-600">
@@ -422,7 +446,7 @@ export default function PagosPanel() {
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex items-center gap-2">
-                        {getTipoPagoIcon(pago.tipoPago)}
+                        {getTipoPagoIcon(pago.tipoPago, pago.monto)}
                         <span className="font-medium text-gray-900">
                           ${pago.monto.toFixed(2)}
                         </span>
@@ -452,7 +476,7 @@ export default function PagosPanel() {
                       <p>
                         <span className="font-medium">Paciente:</span> {pago.paciente?.nombre} {pago.paciente?.apellido} (DNI: {pago.paciente?.dni})
                       </p>
-                      <p>Tipo: {getTipoPagoLabel(pago.tipoPago)}</p>
+                      <p>Tipo: {getTipoPagoLabel(pago.tipoPago, pago.monto)}</p>
                       {pago.numeroComprobante && (
                         <p>Comprobante: {pago.numeroComprobante}</p>
                       )}
@@ -560,8 +584,8 @@ export default function PagosPanel() {
                           </td>
                           <td className="py-3 px-4 text-sm">
                             <div className="flex items-center gap-2">
-                              {getTipoPagoIcon(pago.tipoPago)}
-                              <span className="text-gray-700">{getTipoPagoLabel(pago.tipoPago)}</span>
+                              {getTipoPagoIcon(pago.tipoPago, pago.monto)}
+                              <span className="text-gray-700">{getTipoPagoLabel(pago.tipoPago, pago.monto)}</span>
                             </div>
                           </td>
                           <td className="py-3 px-4 text-sm text-gray-600">
@@ -613,7 +637,7 @@ export default function PagosPanel() {
                     >
                       <div className="flex justify-between items-start mb-2">
                         <div className="flex items-center gap-2">
-                          {getTipoPagoIcon(pago.tipoPago)}
+                          {getTipoPagoIcon(pago.tipoPago, pago.monto)}
                           <span className="font-medium text-gray-900">
                             ${pago.monto.toFixed(2)}
                           </span>
@@ -623,7 +647,7 @@ export default function PagosPanel() {
                         </span>
                       </div>
                       <div className="text-sm text-gray-600">
-                        <p>Tipo: {getTipoPagoLabel(pago.tipoPago)}</p>
+                        <p>Tipo: {getTipoPagoLabel(pago.tipoPago, pago.monto)}</p>
                         {pago.numeroComprobante && (
                           <p>Comprobante: {pago.numeroComprobante}</p>
                         )}

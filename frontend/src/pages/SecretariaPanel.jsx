@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, Plus, Send, UserPlus, Users, Edit, Trash2, Clock, UserCheck } from 'lucide-react'
+import { Search, Plus, Send, UserPlus, Users, Edit, Trash2, Clock, UserCheck, X, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { searchPacientes, enviarPacienteAEspera, getAllPacientes, deletePaciente, getAtencionesActivasSecretaria } from '../services/api'
+import { searchPacientes, enviarPacienteAEspera, getAllPacientes, deletePaciente, getAtencionesActivasSecretaria, cancelarAtencion } from '../services/api'
 import PacienteForm from '../components/PacienteForm'
 import EnviarAEsperaConPago from '../components/EnviarAEsperaConPago'
 
@@ -91,6 +91,26 @@ export default function SecretariaPanel() {
     setShowForm(true)
   }
 
+  // Mutación para cancelar atención (remover de sala de espera)
+  const cancelarAtencionMutation = useMutation({
+    mutationFn: cancelarAtencion,
+    onSuccess: () => {
+      toast.success('Paciente removido de la sala de espera')
+      queryClient.invalidateQueries(['atenciones', 'activas-secretaria'])
+    },
+    onError: (error) => {
+      toast.error(error.response?.data?.message || 'Error al remover paciente')
+    },
+  })
+
+  const handleCancelarAtencion = (atencion, pacienteNombre, e) => {
+    e.stopPropagation()
+    const estadoTexto = atencion.estado === 'EN_ESPERA' ? 'sala de espera' : 'atención'
+    if (window.confirm(`¿Estás seguro de que deseas remover a ${pacienteNombre} de la ${estadoTexto}?`)) {
+      cancelarAtencionMutation.mutate(atencion.id)
+    }
+  }
+
   return (
     <div className="px-4 py-4 sm:py-6 sm:px-0">
       <div className="mb-4 sm:mb-6">
@@ -147,17 +167,45 @@ export default function SecretariaPanel() {
                     En Sala de Espera ({enEspera.length})
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {enEspera.map((atencion) => (
-                      <div
-                        key={atencion.id}
-                        className="p-3 border border-yellow-200 bg-yellow-50 rounded-lg"
-                      >
-                        <div className="flex items-start justify-between">
+                    {enEspera.map((atencion) => {
+                      const tienePrioridad = atencion.prioridad === true
+                      return (
+                        <div
+                          key={atencion.id}
+                          className={`p-3 border rounded-lg ${
+                            tienePrioridad
+                              ? 'border-red-400 bg-red-50 shadow-md ring-2 ring-red-200'
+                              : ''
+                          }`}
+                          style={!tienePrioridad ? {
+                            backgroundColor: 'var(--theme-waiting-bg, #fefce8)',
+                            borderColor: 'var(--theme-waiting-border, #fde047)'
+                          } : {}}
+                        >
+                          <div className="flex items-start justify-between mb-2">
+                            {tienePrioridad && (
+                              <div className="flex items-center flex-1">
+                                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                                <span className="ml-1 text-xs font-bold text-red-700 whitespace-nowrap">PRIORIDAD/OPERADO</span>
+                              </div>
+                            )}
+                            {!tienePrioridad && <div></div>}
+                            <button
+                              onClick={(e) => handleCancelarAtencion(atencion, `${atencion.paciente?.nombre} ${atencion.paciente?.apellido}`, e)}
+                              className="flex-shrink-0 p-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded transition-colors ml-2"
+                              title="Remover de sala de espera"
+                              disabled={cancelarAtencionMutation.isPending}
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
                           <div className="flex-1">
-                            <p className="font-medium text-gray-900">
+                            <p className={`font-medium ${tienePrioridad ? 'text-red-900' : 'text-gray-900'}`}>
                               {atencion.paciente?.nombre} {atencion.paciente?.apellido}
                             </p>
-                            <p className="text-sm text-gray-600">DNI: {atencion.paciente?.dni}</p>
+                            <p className={`text-sm ${tienePrioridad ? 'text-red-700' : 'text-gray-600'}`}>
+                              DNI: {atencion.paciente?.dni}
+                            </p>
                             <p className="text-xs text-gray-500 mt-1">
                               Dr. {atencion.medico?.usuario?.nombre} {atencion.medico?.usuario?.apellido}
                             </p>
@@ -167,10 +215,16 @@ export default function SecretariaPanel() {
                             <p className="text-xs text-gray-400 mt-1">
                               Ingreso: {new Date(atencion.horaIngreso).toLocaleTimeString()}
                             </p>
+                            {atencion.pagoAsociado?.observaciones && (
+                              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
+                                <p className="font-semibold text-blue-900 mb-1">Observación de Pago:</p>
+                                <p className="text-blue-800">{atencion.pagoAsociado.observaciones}</p>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </div>
               )}

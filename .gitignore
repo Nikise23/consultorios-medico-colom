@@ -42,11 +42,13 @@ lerna-debug.log*
 # Prisma
 /prisma/migrations
 
-# Excluir todos los archivos .md excepto README.md
+# Excluir todos los archivos .md excepto README.md y guías de despliegue
 *.md
 !README.md
 !/README.md
 !**/README.md
+!DEPLOY.md
+!DEPLOY-UNIFIED.md
 
 
 

@@ -1,4 +1,4 @@
-import { IsInt, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsInt, IsNotEmpty, IsOptional, IsString, IsBoolean } from 'class-validator';
 
 export class CreateAtencionDto {
   @IsInt()
@@ -12,6 +12,10 @@ export class CreateAtencionDto {
   @IsString()
   @IsOptional()
   observaciones?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  prioridad?: boolean;
 }
 
 

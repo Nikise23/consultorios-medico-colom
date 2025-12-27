@@ -125,6 +125,7 @@ export class PacientesController {
       pacienteId: paciente.id,
       medicoId: enviarAEsperaDto.medicoId,
       observaciones: enviarAEsperaDto.observaciones,
+      prioridad: enviarAEsperaDto.prioridad || false,
     });
 
     return {

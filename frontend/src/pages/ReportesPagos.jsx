@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { DollarSign, Calendar, TrendingUp, Wallet, CreditCard, BarChart3, Download, Stethoscope, ChevronDown, ChevronUp } from 'lucide-react'
+import { DollarSign, Calendar, TrendingUp, Wallet, CreditCard, BarChart3, Download, Stethoscope, ChevronDown, ChevronUp, Building2, X } from 'lucide-react'
 import { getReportePagosDia, getReportePagosMes, getReportePagosAnio, getEstadisticasPagos } from '../services/api'
 import { useAuth } from '../contexts/AuthContext'
 
 export default function ReportesPagos() {
   const { user } = useAuth()
   const [medicosExpandidos, setMedicosExpandidos] = useState({})
+  const [diaSeleccionado, setDiaSeleccionado] = useState(null) // Para filtrar pagos por día
   // Inicializar mesSeleccionado con el mes actual en formato YYYY-MM
   const getMesActual = () => {
     const ahora = new Date()
@@ -498,20 +499,33 @@ export default function ReportesPagos() {
                                             {pago.paciente?.nombre} {pago.paciente?.apellido}
                                           </td>
                                           <td className="px-4 py-2 whitespace-nowrap">
-                                            <span
-                                              className={`px-2 py-1 text-xs font-medium rounded-full inline-flex items-center ${
-                                                pago.tipoPago === 'EFECTIVO'
-                                                  ? 'bg-green-100 text-green-800'
-                                                  : 'bg-blue-100 text-blue-800'
-                                              }`}
-                                            >
-                                              {pago.tipoPago === 'EFECTIVO' ? (
-                                                <Wallet className="w-3 h-3 mr-1" />
-                                              ) : (
-                                                <CreditCard className="w-3 h-3 mr-1" />
-                                              )}
-                                              {pago.tipoPago}
-                                            </span>
+                                            {(() => {
+                                              const monto = pago.monto || 0
+                                              const tipoPago = monto === 0 ? 'OBRA_SOCIAL' : (pago.tipoPago === 'OBRA_SOCIAL' ? 'OBRA_SOCIAL' : pago.tipoPago)
+                                              const esObraSocial = tipoPago === 'OBRA_SOCIAL'
+                                              const esEfectivo = tipoPago === 'EFECTIVO'
+                                              
+                                              return (
+                                                <span
+                                                  className={`px-2 py-1 text-xs font-medium rounded-full inline-flex items-center ${
+                                                    esObraSocial
+                                                      ? 'bg-orange-100 text-orange-800'
+                                                      : esEfectivo
+                                                      ? 'bg-green-100 text-green-800'
+                                                      : 'bg-blue-100 text-blue-800'
+                                                  }`}
+                                                >
+                                                  {esObraSocial ? (
+                                                    <Building2 className="w-3 h-3 mr-1" />
+                                                  ) : esEfectivo ? (
+                                                    <Wallet className="w-3 h-3 mr-1" />
+                                                  ) : (
+                                                    <CreditCard className="w-3 h-3 mr-1" />
+                                                  )}
+                                                  {esObraSocial ? 'Obra Social' : tipoPago}
+                                                </span>
+                                              )
+                                            })()}
                                           </td>
                                           <td className="px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
                                             {formatearMoneda(pago.monto)}
@@ -556,11 +570,36 @@ export default function ReportesPagos() {
                     // dia.fecha viene como "YYYY-MM-DD" desde el backend
                     const [anio, mes, diaNum] = dia.fecha.split('-').map(Number)
                     const fechaLocal = new Date(anio, mes - 1, diaNum)
+                    const fechaString = dia.fecha // "YYYY-MM-DD"
+                    const estaSeleccionado = diaSeleccionado === fechaString
+                    
+                    const handleClickDia = () => {
+                      if (estaSeleccionado) {
+                        setDiaSeleccionado(null)
+                      } else {
+                        setDiaSeleccionado(fechaString)
+                        // Hacer scroll a la sección de lista de pagos después de un pequeño delay
+                        setTimeout(() => {
+                          const listaPagosElement = document.getElementById('lista-pagos')
+                          if (listaPagosElement) {
+                            listaPagosElement.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                          }
+                        }, 100)
+                      }
+                    }
                     
                     return (
-                    <div key={index} className="p-3 border border-gray-200 rounded-lg">
+                    <div 
+                      key={index} 
+                      onClick={handleClickDia}
+                      className={`p-3 border rounded-lg cursor-pointer transition-all ${
+                        estaSeleccionado 
+                          ? 'border-primary-500 bg-primary-50 shadow-md' 
+                          : 'border-gray-200 hover:border-primary-300 hover:bg-gray-50'
+                      }`}
+                    >
                       <div className="flex justify-between items-center">
-                        <span className="font-medium text-gray-900">
+                        <span className={`font-medium ${estaSeleccionado ? 'text-primary-900' : 'text-gray-900'}`}>
                           {fechaLocal.toLocaleDateString('es-AR', {
                             day: 'numeric',
                             month: 'long'
@@ -573,7 +612,7 @@ export default function ReportesPagos() {
                           <span className="text-blue-700">
                             Transf: {formatearMoneda(dia.totalTransferencia)}
                           </span>
-                          <span className="font-medium text-gray-900">
+                          <span className={`font-medium ${estaSeleccionado ? 'text-primary-900' : 'text-gray-900'}`}>
                             Total: {formatearMoneda(dia.totalEfectivo + dia.totalTransferencia)}
                           </span>
                         </div>
@@ -621,8 +660,32 @@ export default function ReportesPagos() {
 
             {/* Lista de Pagos */}
             {reporte.data.pagos && reporte.data.pagos.length > 0 && (
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Lista de Pagos</h3>
+              <div id="lista-pagos">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Lista de Pagos</h3>
+                  {diaSeleccionado && (
+                    <button
+                      onClick={() => setDiaSeleccionado(null)}
+                      className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                    >
+                      <X className="w-4 h-4" />
+                      Limpiar filtro
+                    </button>
+                  )}
+                </div>
+                {diaSeleccionado && (
+                  <div className="mb-3 p-2 bg-primary-50 border border-primary-200 rounded text-sm text-primary-800">
+                    Mostrando pagos del {(() => {
+                      const [anio, mes, diaNum] = diaSeleccionado.split('-').map(Number)
+                      const fecha = new Date(anio, mes - 1, diaNum)
+                      return fecha.toLocaleDateString('es-AR', {
+                        day: 'numeric',
+                        month: 'long',
+                        year: 'numeric'
+                      })
+                    })()}
+                  </div>
+                )}
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
@@ -645,7 +708,32 @@ export default function ReportesPagos() {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {reporte.data.pagos.map((pago) => (
+                      {(() => {
+                        // Filtrar pagos por día seleccionado si hay uno
+                        const pagosFiltrados = diaSeleccionado 
+                          ? reporte.data.pagos.filter((pago) => {
+                              // Manejar la fecha de manera más robusta para evitar problemas de zona horaria
+                              const fechaPago = new Date(pago.fechaPago)
+                              // Obtener año, mes y día en hora local
+                              const anio = fechaPago.getFullYear()
+                              const mes = String(fechaPago.getMonth() + 1).padStart(2, '0')
+                              const dia = String(fechaPago.getDate()).padStart(2, '0')
+                              const fechaPagoString = `${anio}-${mes}-${dia}` // "YYYY-MM-DD"
+                              return fechaPagoString === diaSeleccionado
+                            })
+                          : reporte.data.pagos
+                        
+                        if (pagosFiltrados.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
+                                No hay pagos para el día seleccionado
+                              </td>
+                            </tr>
+                          )
+                        }
+                        
+                        return pagosFiltrados.map((pago) => (
                         <tr key={pago.id} className="hover:bg-gray-50">
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                             {new Date(pago.fechaPago).toLocaleDateString('es-AR')}
@@ -654,20 +742,33 @@ export default function ReportesPagos() {
                             {pago.paciente?.nombre} {pago.paciente?.apellido}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
-                            <span
-                              className={`px-2 py-1 text-xs font-medium rounded-full inline-flex items-center ${
-                                pago.tipoPago === 'EFECTIVO'
-                                  ? 'bg-green-100 text-green-800'
-                                  : 'bg-blue-100 text-blue-800'
-                              }`}
-                            >
-                              {pago.tipoPago === 'EFECTIVO' ? (
-                                <Wallet className="w-3 h-3 mr-1" />
-                              ) : (
-                                <CreditCard className="w-3 h-3 mr-1" />
-                              )}
-                              {pago.tipoPago}
-                            </span>
+                            {(() => {
+                              const monto = pago.monto || 0
+                              const tipoPago = monto === 0 ? 'OBRA_SOCIAL' : (pago.tipoPago === 'OBRA_SOCIAL' ? 'OBRA_SOCIAL' : pago.tipoPago)
+                              const esObraSocial = tipoPago === 'OBRA_SOCIAL'
+                              const esEfectivo = tipoPago === 'EFECTIVO'
+                              
+                              return (
+                                <span
+                                  className={`px-2 py-1 text-xs font-medium rounded-full inline-flex items-center ${
+                                    esObraSocial
+                                      ? 'bg-orange-100 text-orange-800'
+                                      : esEfectivo
+                                      ? 'bg-green-100 text-green-800'
+                                      : 'bg-blue-100 text-blue-800'
+                                  }`}
+                                >
+                                  {esObraSocial ? (
+                                    <Building2 className="w-3 h-3 mr-1" />
+                                  ) : esEfectivo ? (
+                                    <Wallet className="w-3 h-3 mr-1" />
+                                  ) : (
+                                    <CreditCard className="w-3 h-3 mr-1" />
+                                  )}
+                                  {esObraSocial ? 'Obra Social' : tipoPago}
+                                </span>
+                              )
+                            })()}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900 text-right">
                             {formatearMoneda(pago.monto)}
@@ -676,15 +777,31 @@ export default function ReportesPagos() {
                             {pago.numeroComprobante || '-'}
                           </td>
                         </tr>
-                      ))}
+                        ))
+                      })()}
                     </tbody>
                     <tfoot className="bg-gray-50">
                       <tr>
                         <td colSpan="3" className="px-4 py-3 text-sm font-medium text-gray-900">
-                          Total
+                          {diaSeleccionado ? 'Total del día' : 'Total'}
                         </td>
                         <td className="px-4 py-3 text-sm font-bold text-gray-900 text-right">
-                          {formatearMoneda(reporte.data.total)}
+                          {(() => {
+                            let total = reporte.data.total
+                            if (diaSeleccionado) {
+                              const pagosFiltrados = reporte.data.pagos.filter((pago) => {
+                                // Manejar la fecha de manera más robusta para evitar problemas de zona horaria
+                                const fechaPago = new Date(pago.fechaPago)
+                                const anio = fechaPago.getFullYear()
+                                const mes = String(fechaPago.getMonth() + 1).padStart(2, '0')
+                                const dia = String(fechaPago.getDate()).padStart(2, '0')
+                                const fechaPagoString = `${anio}-${mes}-${dia}`
+                                return fechaPagoString === diaSeleccionado
+                              })
+                              total = pagosFiltrados.reduce((sum, pago) => sum + pago.monto, 0)
+                            }
+                            return formatearMoneda(total)
+                          })()}
                         </td>
                         <td></td>
                       </tr>

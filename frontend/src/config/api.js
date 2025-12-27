@@ -7,6 +7,13 @@ const getApiUrl = () => {
     return import.meta.env.VITE_API_URL
   }
   
+  // En producción, si el frontend y backend están en el mismo dominio, usar rutas relativas
+  if (import.meta.env.PROD) {
+    // En producción, el backend y frontend están en el mismo dominio
+    // Las rutas de API se servirán directamente desde el mismo servidor
+    return '' // Rutas relativas - el mismo dominio
+  }
+  
   // Si estamos en el navegador, detectar si estamos en localhost o en la red local
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname

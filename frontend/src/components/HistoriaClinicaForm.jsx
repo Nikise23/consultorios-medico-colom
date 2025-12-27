@@ -259,14 +259,21 @@ export default function HistoriaClinicaForm({ atencion, onClose, onSuccess }) {
                           className="p-3 border border-gray-200 rounded-lg bg-white text-sm"
                         >
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-xs text-gray-500 flex items-center">
-                              <Clock className="w-3 h-3 mr-1" />
-                              {new Date(historia.fechaConsulta).toLocaleDateString('es-AR', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                              })}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-500 flex items-center">
+                                <Clock className="w-3 h-3 mr-1" />
+                                {new Date(historia.fechaConsulta).toLocaleDateString('es-AR', {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </span>
+                              {historia.medico?.usuario && (
+                                <span className="text-xs text-gray-600 font-medium">
+                                  • Dr. {historia.medico.usuario.nombre} {historia.medico.usuario.apellido}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <p className="text-gray-700 whitespace-pre-wrap line-clamp-3">
                             {historia.observaciones || 'Sin contenido'}

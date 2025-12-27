@@ -12,12 +12,18 @@ import { UsuariosModule } from '../usuarios/usuarios.module';
     PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
-        signOptions: {
-          expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '24h',
-        },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const jwtSecret = configService.get<string>('JWT_SECRET');
+        if (!jwtSecret) {
+          throw new Error('JWT_SECRET no está definido en las variables de entorno. Por favor, crea un archivo .env con JWT_SECRET.');
+        }
+        return {
+          secret: jwtSecret,
+          signOptions: {
+            expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '24h',
+          },
+        };
+      },
     }),
     UsuariosModule,
   ],

@@ -28,6 +28,7 @@ enum EstadoAtencion {
 enum TipoPago {
   EFECTIVO
   TRANSFERENCIA
+  OBRA_SOCIAL
 }
 
 model Usuario {
@@ -38,6 +39,7 @@ model Usuario {
   nombre    String
   apellido  String
   activo    Boolean  @default(true)
+  tema      Json?    // Tema personalizado del usuario (puede ser un tema predefinido o personalizado)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -90,6 +92,7 @@ model Atencion {
   pacienteId    Int
   medicoId      Int
   estado        EstadoAtencion @default(EN_ESPERA)
+  prioridad     Boolean        @default(false)
   horaIngreso   DateTime       @default(now())
   horaAtencion  DateTime?
   observaciones String?        @db.Text
@@ -103,6 +106,7 @@ model Atencion {
   @@index([estado])
   @@index([medicoId, estado])
   @@index([horaIngreso])
+  @@index([prioridad])
   @@map("atenciones")
 }
 

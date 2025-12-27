@@ -133,25 +133,35 @@ export class AtencionesController {
   /**
    * Cancelar una atención (sacar de sala de espera)
    * DELETE /atenciones/:id
+   * La secretaria solo puede cancelar atenciones en estado EN_ESPERA
+   * Los médicos solo pueden cancelar sus propias atenciones (en espera o atendiendo)
+   * El administrador puede cancelar cualquier atención
    */
   @Delete(':id')
-  @Roles(Rol.MEDICO, Rol.ADMINISTRADOR)
+  @Roles(Rol.MEDICO, Rol.ADMINISTRADOR, Rol.SECRETARIA)
   async cancelar(
     @Param('id', ParseIntPipe) id: number,
     @CurrentUser() user: any,
   ) {
-    let medicoId: number;
-
-    if (user.rol === Rol.MEDICO) {
-      const medico = await this.getMedicoByUsuarioId(user.id);
-      medicoId = medico.id;
-    } else {
-      // Administrador: obtener médicoId de la atención
-      const atencion = await this.atencionesService.findOne(id);
-      medicoId = atencion.medicoId;
+    // Si es secretaria, solo puede cancelar sin validar médico (el servicio validará que esté en espera)
+    if (user.rol === Rol.SECRETARIA) {
+      return this.atencionesService.cancelar(id);
     }
 
-    return this.atencionesService.cancelar(id, medicoId);
+    // Si es administrador, puede cancelar cualquier atención sin validar médico
+    if (user.rol === Rol.ADMINISTRADOR) {
+      return this.atencionesService.cancelar(id);
+    }
+
+    // Si es médico, validar que sea su atención
+    if (user.rol === Rol.MEDICO) {
+      const medico = await this.getMedicoByUsuarioId(user.id);
+      return this.atencionesService.cancelar(id, medico.id);
+    }
+
+    // Fallback (no debería llegar aquí por el guard)
+    const atencion = await this.atencionesService.findOne(id);
+    return this.atencionesService.cancelar(id, atencion.medicoId);
   }
 
   /**
