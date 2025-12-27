@@ -599,9 +599,18 @@ export class PagosService {
       },
     });
 
+    // Filtrar adicionalmente por fecha en Argentina para asegurar que solo incluimos pagos del día correcto
+    // Esto es una doble verificación porque la consulta a la BD usa UTC
+    const pagosFiltrados = pagos.filter((pago) => {
+      const fechaPagoUTC = new Date(pago.fechaPago);
+      const fechaPagoArgentina = this.getFechaArgentina(fechaPagoUTC);
+      return fechaPagoArgentina === fechaString;
+    });
+
     // Log para debugging - ver qué pagos se están retornando
-    console.log('🔍 getReporteDia - Pagos encontrados:', pagos.length);
-    pagos.forEach((pago, index) => {
+    console.log('🔍 getReporteDia - Pagos encontrados en BD:', pagos.length);
+    console.log('🔍 getReporteDia - Pagos filtrados por fecha Argentina:', pagosFiltrados.length);
+    pagosFiltrados.forEach((pago, index) => {
       const fechaPagoUTC = new Date(pago.fechaPago);
       const fechaPagoArgentina = fechaPagoUTC.toLocaleString('es-AR', {
         timeZone: 'America/Argentina/Buenos_Aires',
@@ -609,10 +618,14 @@ export class PagosService {
       console.log(`🔍 Pago ${index + 1}:`, {
         id: pago.id,
         monto: pago.monto,
+        tipoPago: pago.tipoPago,
         fechaPagoUTC: fechaPagoUTC.toISOString(),
         fechaPagoArgentina,
       });
     });
+
+    // Usar los pagos filtrados en lugar de todos los pagos
+    const pagos = pagosFiltrados;
 
     // Si es administrador o secretaria, agrupar por médico
     if (user?.rol === 'ADMINISTRADOR' || user?.rol === 'SECRETARIA') {
