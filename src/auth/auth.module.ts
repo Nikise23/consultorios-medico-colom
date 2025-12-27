@@ -17,10 +17,16 @@ import { UsuariosModule } from '../usuarios/usuarios.module';
         if (!jwtSecret) {
           throw new Error('JWT_SECRET no está definido en las variables de entorno. Por favor, crea un archivo .env con JWT_SECRET.');
         }
+        const expiresIn = configService.get<string>('JWT_EXPIRES_IN');
+        // Validar que expiresIn sea un string válido o usar el default
+        const validExpiresIn = expiresIn && typeof expiresIn === 'string' && expiresIn.trim() !== '' 
+          ? expiresIn.trim() 
+          : '24h';
+        
         return {
           secret: jwtSecret,
           signOptions: {
-            expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '24h',
+            expiresIn: validExpiresIn,
           },
         };
       },
