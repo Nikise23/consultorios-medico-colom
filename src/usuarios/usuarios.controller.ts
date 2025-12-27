@@ -50,7 +50,11 @@ export class UsuariosController {
   }
 
   @Patch('theme')
-  async updateTheme(@CurrentUser() user: any, @Body() themeData: any) {
+  async updateTheme(@CurrentUser() user: any, @Body() body: any) {
+    // El body puede ser directamente el tema (string o objeto) o estar dentro de una propiedad
+    // Aceptamos ambos formatos para mayor flexibilidad
+    const themeData = body.tema !== undefined ? body.tema : body;
+    console.log('Recibiendo tema:', JSON.stringify(themeData));
     return this.usuariosService.updateTheme(user.id, themeData);
   }
 

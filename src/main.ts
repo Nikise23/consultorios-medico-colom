@@ -44,6 +44,8 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: true,
       },
+      // Permitir objetos JSON complejos (como el tema personalizado)
+      skipMissingProperties: false,
       exceptionFactory: (errors) => {
         const messages = errors.map(error => 
           Object.values(error.constraints || {}).join(', ')
