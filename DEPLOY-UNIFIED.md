@@ -118,11 +118,11 @@ Ya tienes la base de datos en Neon.tech, solo necesitas:
   Este comando automáticamente:
   1. Render ejecuta `npm install` (instala todas las dependencias incluyendo devDependencies)
   2. Genera el cliente de Prisma (`prisma generate`)
-  3. Construye el backend (NestJS usando `node_modules/.bin/nest build`)
+  3. Construye el backend (NestJS usando `nest build` → genera `dist/` en la raíz)
   4. Instala dependencias del frontend
-  5. Construye el frontend (React/Vite)
+  5. Construye el frontend (React/Vite → genera `frontend/dist/`)
   
-  **Nota:** El script usa `node_modules/.bin/nest build` para asegurar que funcione correctamente en Render.
+  **Nota:** El script está dividido en `build:backend` y `build:frontend` para mejor control y debugging.
   
 - **Start Command:**
   ```bash
