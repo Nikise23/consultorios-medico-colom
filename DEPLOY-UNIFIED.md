@@ -275,6 +275,25 @@ const port = process.env.PORT || 3000;
 3. Asegúrate de que `frontend/dist` se genere correctamente
 4. Verifica que el path en `main.ts` sea correcto: `join(__dirname, '..', 'frontend', 'dist')`
 
+### Error: "Cannot find module '/opt/render/project/src/dist/main'"
+
+**Solución:**
+Este error significa que el build del backend NO se completó. El directorio `dist/` no se generó.
+
+**Pasos para solucionar:**
+1. **Verifica los logs de build completos** en Render - busca errores durante `nest build`
+2. **Asegúrate de que `NODE_ENV` NO esté configurado** como `production` durante el build
+3. **Verifica que `@nestjs/cli` se instale correctamente** (debe estar en devDependencies)
+4. Si el build falla silenciosamente, el problema podría ser:
+   - `NODE_ENV=production` está configurado (evita instalar devDependencies)
+   - El comando `nest build` falla pero no muestra el error completo
+   - Hay un error de TypeScript que impide la compilación
+
+**Debugging:**
+- Revisa los logs completos del build en Render
+- Busca mensajes de error relacionados con TypeScript o NestJS
+- Verifica que el paso `npm run build:backend` se complete exitosamente
+
 ---
 
 ## 📝 Checklist Final
