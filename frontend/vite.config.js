@@ -45,6 +45,7 @@ export default defineConfig({
     },
     commonjsOptions: {
       include: [/jspdf/, /node_modules/],
+      transformMixedEsModules: true,
     },
   },
 })

@@ -5,7 +5,7 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../contexts/AuthContext'
 import { searchHistoriasClinicas, getHistoriasByPaciente, getMedicos, crearNuevaConsulta, createHistoriaClinica, getProfile, searchPacientes } from '../services/api'
 import HistoriaClinicaForm from '../components/HistoriaClinicaForm'
-import jsPDF from 'jspdf'
+import { jsPDF } from 'jspdf'
 
 // Hook para debounce
 function useDebounce(value, delay) {
