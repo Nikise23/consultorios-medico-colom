@@ -29,6 +29,9 @@ export default defineConfig({
       },
     },
   },
+  optimizeDeps: {
+    include: ['jspdf'],
+  },
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
@@ -39,6 +42,9 @@ export default defineConfig({
         chunkFileNames: 'assets/[name].[hash].js',
         entryFileNames: 'assets/[name].[hash].js',
       },
+    },
+    commonjsOptions: {
+      include: [/jspdf/, /node_modules/],
     },
   },
 })

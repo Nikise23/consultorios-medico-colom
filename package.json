@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "build:backend": "echo '🔨 Iniciando build del backend...' && node_modules/.bin/nest build || (echo '⚠️ Intentando con npx...' && npx --yes @nestjs/cli build) && echo '🔍 Verificando que dist/src/main.js existe...' && node -e \"const fs=require('fs'); const path=require('path'); const distPath=path.join(process.cwd(),'dist','src','main.js'); console.log('Buscando en:', distPath); if(!fs.existsSync(distPath)){console.error('❌ ERROR: dist/src/main.js no se generó en', distPath); console.log('Contenido de dist:', fs.existsSync('dist') ? fs.readdirSync('dist').join(', ') : 'directorio dist no existe'); process.exit(1);} console.log('✅ dist/src/main.js generado correctamente en', distPath);\"",
-    "build:frontend": "cd frontend && npm install && npm install --include=dev && (npx vite build || node_modules/.bin/vite build) || (echo '❌ Build frontend failed' && exit 1)",
+    "build:frontend": "cd frontend && npm install && npm install --include=dev && (npm list jspdf || npm install jspdf) && (npx vite build || node_modules/.bin/vite build) || (echo '❌ Build frontend failed' && exit 1)",
     "build": "npm run prisma:generate && npm run build:backend && npm run build:frontend",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
