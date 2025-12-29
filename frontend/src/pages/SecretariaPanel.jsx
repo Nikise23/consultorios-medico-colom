@@ -721,20 +721,20 @@ export default function SecretariaPanel() {
             ) : null}
           </div>
         ) : (
-            // No se encontraron resultados
-            <div className="text-center py-8 text-gray-500">
-              <UserPlus className="w-12 h-12 mx-auto mb-4 text-gray-400" />
-              <p>No se encontraron pacientes</p>
-              <button
-                onClick={() => setShowForm(true)}
-                className="mt-4 btn btn-primary"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Registrar Nuevo Paciente
-              </button>
-            </div>
-          )
-        })()}
+          // No se encontraron resultados
+          <div className="text-center py-8 text-gray-500">
+            <UserPlus className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+            <p>No se encontraron pacientes</p>
+            <button
+              onClick={() => setShowForm(true)}
+              className="mt-4 btn btn-primary"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Registrar Nuevo Paciente
+            </button>
+          </div>
+        )
+      })()}
       )}
 
       {/* Formulario para nuevo paciente o actualizar */}
@@ -748,6 +748,16 @@ export default function SecretariaPanel() {
           onSuccess={() => {
             setShowForm(false)
             setSelectedPaciente(null)
+            queryClient.invalidateQueries(['pacientes'])
+          }}
+          onCreateAndSend={(pacienteCreado) => {
+            // Cerrar el formulario de paciente
+            setShowForm(false)
+            // Establecer el paciente recién creado como seleccionado
+            setSelectedPaciente(pacienteCreado)
+            // Abrir el modal de "Cobrar y Enviar"
+            setShowEnviarConPago(true)
+            // Invalidar queries para actualizar la lista
             queryClient.invalidateQueries(['pacientes'])
           }}
         />
