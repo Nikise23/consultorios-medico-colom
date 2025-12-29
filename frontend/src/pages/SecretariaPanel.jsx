@@ -735,7 +735,6 @@ export default function SecretariaPanel() {
           </div>
         )
       })()}
-      )}
 
       {/* Formulario para nuevo paciente o actualizar */}
       {showForm && (
