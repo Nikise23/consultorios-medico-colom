@@ -1,10 +1,11 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Search, FileText, Calendar, User, Stethoscope, Plus, X, ChevronDown, ChevronUp } from 'lucide-react'
+import { Search, FileText, Calendar, User, Stethoscope, Plus, X, ChevronDown, ChevronUp, Download } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../contexts/AuthContext'
 import { searchHistoriasClinicas, getHistoriasByPaciente, getMedicos, crearNuevaConsulta, createHistoriaClinica, getProfile, searchPacientes } from '../services/api'
 import HistoriaClinicaForm from '../components/HistoriaClinicaForm'
+import jsPDF from 'jspdf'
 
 // Hook para debounce
 function useDebounce(value, delay) {
@@ -259,6 +260,271 @@ export default function HistoriasClinicas() {
     queryClient.invalidateQueries(['historias'])
     queryClient.invalidateQueries(['atenciones'])
     toast.success('Historia clínica creada exitosamente')
+  }
+
+  // Función para generar y descargar PDF
+  const handleDownloadPDF = () => {
+    if (!selectedPaciente) {
+      toast.error('No hay paciente seleccionado')
+      return
+    }
+
+    // Obtener historias del paciente - normalizar estructura de datos
+    let historiasData = historias?.data
+    // Manejar estructura anidada de axios: {data: {data: [...]}}
+    if (historiasData && !Array.isArray(historiasData)) {
+      historiasData = historiasData.data || historiasData
+    }
+    // Asegurarse de que sea un array
+    if (!Array.isArray(historiasData)) {
+      historiasData = []
+    }
+    
+    if (historiasData.length === 0) {
+      toast.error('No hay historias clínicas para descargar')
+      return
+    }
+
+    // Crear nuevo documento PDF
+    const doc = new jsPDF()
+    let yPosition = 20
+
+    // Configuración de colores y estilos
+    const primaryColor = [0, 122, 204] // Azul
+    const textColor = [51, 51, 51] // Gris oscuro
+    const lightGray = [245, 245, 245] // Gris claro
+
+    // Título principal
+    doc.setFontSize(18)
+    doc.setTextColor(...primaryColor)
+    doc.setFont('helvetica', 'bold')
+    doc.text('HISTORIA CLÍNICA', 105, yPosition, { align: 'center' })
+    yPosition += 10
+
+    // Línea separadora
+    doc.setDrawColor(...primaryColor)
+    doc.setLineWidth(0.5)
+    doc.line(20, yPosition, 190, yPosition)
+    yPosition += 10
+
+    // Información del paciente
+    doc.setFontSize(14)
+    doc.setTextColor(...textColor)
+    doc.setFont('helvetica', 'bold')
+    doc.text('DATOS DEL PACIENTE', 20, yPosition)
+    yPosition += 8
+
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Nombre: ${selectedPaciente.nombre} ${selectedPaciente.apellido}`, 20, yPosition)
+    yPosition += 6
+    doc.text(`DNI: ${selectedPaciente.dni}`, 20, yPosition)
+    yPosition += 6
+
+    if (selectedPaciente.obraSocial) {
+      doc.text(`Obra Social: ${selectedPaciente.obraSocial}`, 20, yPosition)
+      yPosition += 6
+    }
+
+    if (selectedPaciente.fechaNacimiento) {
+      const fechaStr = selectedPaciente.fechaNacimiento
+      let fecha
+      if (typeof fechaStr === 'string') {
+        const fechaParte = fechaStr.split('T')[0]
+        const [anio, mes, dia] = fechaParte.split('-').map(Number)
+        fecha = new Date(anio, mes - 1, dia)
+      } else {
+        fecha = new Date(fechaStr)
+      }
+      const fechaFormateada = fecha.toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
+      doc.text(`Fecha de Nacimiento: ${fechaFormateada}`, 20, yPosition)
+      yPosition += 6
+    }
+
+    if (selectedPaciente.telefono) {
+      doc.text(`Teléfono: ${selectedPaciente.telefono}`, 20, yPosition)
+      yPosition += 6
+    }
+
+    if (selectedPaciente.email) {
+      doc.text(`Email: ${selectedPaciente.email}`, 20, yPosition)
+      yPosition += 6
+    }
+
+    if (selectedPaciente.direccion) {
+      doc.text(`Dirección: ${selectedPaciente.direccion}`, 20, yPosition)
+      yPosition += 6
+    }
+
+    yPosition += 5
+
+    // Agrupar historias por especialidad
+    const historiasPorEspecialidadPDF = historiasData.reduce((acc, historia) => {
+      const especialidad = historia.medico?.especialidad || 'Sin Especialidad'
+      if (!acc[especialidad]) {
+        acc[especialidad] = []
+      }
+      acc[especialidad].push(historia)
+      return acc
+    }, {})
+
+    // Agregar historias clínicas
+    Object.entries(historiasPorEspecialidadPDF).forEach(([especialidad, historiasEspecialidad]) => {
+      // Verificar si necesitamos una nueva página
+      if (yPosition > 250) {
+        doc.addPage()
+        yPosition = 20
+      }
+
+      // Título de especialidad
+      doc.setFontSize(12)
+      doc.setFont('helvetica', 'bold')
+      doc.setTextColor(...primaryColor)
+      doc.text(especialidad.toUpperCase(), 20, yPosition)
+      yPosition += 8
+
+      // Agregar cada historia
+      historiasEspecialidad.forEach((historia, index) => {
+        // Verificar si necesitamos una nueva página
+        if (yPosition > 250) {
+          doc.addPage()
+          yPosition = 20
+        }
+
+        // Fecha y médico
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(...textColor)
+        const fechaConsulta = new Date(historia.fechaConsulta).toLocaleDateString('es-AR', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })
+        doc.text(`Fecha: ${fechaConsulta}`, 20, yPosition)
+        yPosition += 5
+
+        if (historia.medico?.usuario) {
+          doc.text(`Médico: Dr. ${historia.medico.usuario.nombre} ${historia.medico.usuario.apellido}`, 20, yPosition)
+          yPosition += 5
+        }
+
+        // Contenido de la historia
+        const maxWidth = 170 // Ancho máximo para el texto
+        if (historia.observaciones) {
+          doc.setFont('helvetica', 'bold')
+          doc.text('Historia Clínica:', 20, yPosition)
+          yPosition += 5
+          doc.setFont('helvetica', 'normal')
+          
+          // Dividir texto en líneas que quepan en el ancho de la página
+          const lines = doc.splitTextToSize(historia.observaciones, maxWidth)
+          lines.forEach((line) => {
+            if (yPosition > 250) {
+              doc.addPage()
+              yPosition = 20
+            }
+            doc.text(line, 20, yPosition)
+            yPosition += 5
+          })
+        } else {
+          // Si no hay observaciones, mostrar otros campos si existen
+          if (historia.motivoConsulta || historia.diagnostico || historia.tratamiento) {
+            if (historia.motivoConsulta) {
+              doc.setFont('helvetica', 'bold')
+              doc.text('Motivo de Consulta:', 20, yPosition)
+              yPosition += 5
+              doc.setFont('helvetica', 'normal')
+              const lines = doc.splitTextToSize(historia.motivoConsulta, maxWidth)
+              lines.forEach((line) => {
+                if (yPosition > 250) {
+                  doc.addPage()
+                  yPosition = 20
+                }
+                doc.text(line, 20, yPosition)
+                yPosition += 5
+              })
+            }
+
+            if (historia.diagnostico) {
+              doc.setFont('helvetica', 'bold')
+              doc.text('Diagnóstico:', 20, yPosition)
+              yPosition += 5
+              doc.setFont('helvetica', 'normal')
+              const lines = doc.splitTextToSize(historia.diagnostico, maxWidth)
+              lines.forEach((line) => {
+                if (yPosition > 250) {
+                  doc.addPage()
+                  yPosition = 20
+                }
+                doc.text(line, 20, yPosition)
+                yPosition += 5
+              })
+            }
+
+            if (historia.tratamiento) {
+              doc.setFont('helvetica', 'bold')
+              doc.text('Tratamiento:', 20, yPosition)
+              yPosition += 5
+              doc.setFont('helvetica', 'normal')
+              const lines = doc.splitTextToSize(historia.tratamiento, maxWidth)
+              lines.forEach((line) => {
+                if (yPosition > 250) {
+                  doc.addPage()
+                  yPosition = 20
+                }
+                doc.text(line, 20, yPosition)
+                yPosition += 5
+              })
+            }
+          } else {
+            doc.text('Sin contenido registrado', 20, yPosition)
+            yPosition += 5
+          }
+        }
+
+        // Línea separadora entre historias
+        if (index < historiasEspecialidad.length - 1) {
+          yPosition += 3
+          doc.setDrawColor(200, 200, 200)
+          doc.setLineWidth(0.2)
+          doc.line(20, yPosition, 190, yPosition)
+          yPosition += 5
+        }
+      })
+
+      yPosition += 5
+    })
+
+    // Pie de página con fecha de generación
+    const totalPages = doc.internal.pages.length - 1
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i)
+      doc.setFontSize(8)
+      doc.setTextColor(128, 128, 128)
+      doc.setFont('helvetica', 'normal')
+      const fechaGeneracion = new Date().toLocaleDateString('es-AR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+      doc.text(
+        `Generado el ${fechaGeneracion} - Página ${i} de ${totalPages}`,
+        105,
+        285,
+        { align: 'center' }
+      )
+    }
+
+    // Descargar PDF
+    const fileName = `Historia_Clinica_${selectedPaciente.apellido}_${selectedPaciente.nombre}_${selectedPaciente.dni}.pdf`
+    doc.save(fileName)
+    toast.success('PDF descargado exitosamente')
   }
 
   // Agrupar historias por especialidad
@@ -565,6 +831,15 @@ export default function HistoriasClinicas() {
                   >
                     <X className="w-4 h-4 mr-1" />
                     Cambiar Búsqueda
+                  </button>
+                  <button
+                    onClick={handleDownloadPDF}
+                    className="btn btn-primary"
+                    title="Descargar historia clínica en PDF"
+                    disabled={!historias?.data || historias.data.length === 0}
+                  >
+                    <Download className="w-4 h-4 mr-1" />
+                    Descargar PDF
                   </button>
                   <button
                     onClick={handleCrearNuevaHistoria}
