@@ -1,5 +1,9 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { resolve } from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url))
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -29,8 +33,16 @@ export default defineConfig({
       },
     },
   },
+  resolve: {
+    alias: {
+      'jspdf': resolve(__dirname, 'node_modules/jspdf'),
+    },
+  },
   optimizeDeps: {
     include: ['jspdf'],
+    esbuildOptions: {
+      resolveExtensions: ['.js', '.jsx', '.ts', '.tsx', '.mjs'],
+    },
   },
   build: {
     outDir: 'dist',
@@ -46,6 +58,7 @@ export default defineConfig({
     commonjsOptions: {
       include: [/jspdf/, /node_modules/],
       transformMixedEsModules: true,
+      defaultIsModuleExports: true,
     },
   },
 })
