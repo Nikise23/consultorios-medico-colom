@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { X } from 'lucide-react'
+import { X, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createPaciente, updatePaciente } from '../services/api'
 
-export default function PacienteForm({ paciente, onClose, onSuccess }) {
+export default function PacienteForm({ paciente, onClose, onSuccess, onCreateAndSend }) {
   const [formData, setFormData] = useState({
     dni: '',
     nombre: '',
@@ -56,9 +56,17 @@ export default function PacienteForm({ paciente, onClose, onSuccess }) {
 
   const createMutation = useMutation({
     mutationFn: createPaciente,
-    onSuccess: () => {
+    onSuccess: (response) => {
       toast.success('Paciente creado exitosamente')
-      onSuccess()
+      // Si hay un callback onCreateAndSend, ejecutarlo con el paciente creado
+      if (onCreateAndSend) {
+        // La respuesta de axios tiene estructura: {data: {...}}
+        // El backend de NestJS devuelve el objeto directamente en data
+        const pacienteCreado = response?.data?.data || response?.data || response
+        onCreateAndSend(pacienteCreado)
+      } else {
+        onSuccess()
+      }
     },
     onError: (error) => {
       const errorMessage = error.response?.data?.message || 
@@ -105,6 +113,30 @@ export default function PacienteForm({ paciente, onClose, onSuccess }) {
     if (paciente) {
       updateMutation.mutate({ id: paciente.id, data: cleanData })
     } else {
+      createMutation.mutate(cleanData)
+    }
+  }
+
+  const handleCreateAndSend = (e) => {
+    e.preventDefault()
+    
+    // Limpiar campos vacíos y convertir fechaNacimiento
+    const cleanData = { ...formData }
+    
+    // Si fechaNacimiento está vacío, no enviarlo
+    if (!cleanData.fechaNacimiento || cleanData.fechaNacimiento === '') {
+      delete cleanData.fechaNacimiento
+    }
+    
+    // Eliminar campos vacíos opcionales
+    Object.keys(cleanData).forEach(key => {
+      if (cleanData[key] === '' && key !== 'dni' && key !== 'nombre' && key !== 'apellido' && key !== 'obraSocial') {
+        delete cleanData[key]
+      }
+    })
+    
+    // Solo funciona para crear nuevos pacientes
+    if (!paciente) {
       createMutation.mutate(cleanData)
     }
   }
@@ -247,6 +279,19 @@ export default function PacienteForm({ paciente, onClose, onSuccess }) {
             <button type="button" onClick={onClose} className="btn btn-secondary">
               Cancelar
             </button>
+            {!paciente && onCreateAndSend && (
+              <button
+                type="button"
+                onClick={handleCreateAndSend}
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="btn btn-primary flex items-center gap-2"
+              >
+                <Send className="w-4 h-4" />
+                {createMutation.isPending
+                  ? 'Creando...'
+                  : 'Crear y Enviar a Sala'}
+              </button>
+            )}
             <button
               type="submit"
               disabled={createMutation.isPending || updateMutation.isPending}

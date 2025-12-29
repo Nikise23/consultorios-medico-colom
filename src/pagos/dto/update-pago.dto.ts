@@ -4,7 +4,7 @@ import { TipoPago } from '@prisma/client';
 export class UpdatePagoDto {
   @IsNumber()
   @IsOptional()
-  @Min(0.01)
+  @Min(0)
   monto?: number;
 
   @IsEnum(TipoPago)
