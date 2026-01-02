@@ -37,7 +37,7 @@ export class PacientesController {
   async search(@Query() searchDto: SearchPacienteDto) {
     try {
       const result = await this.pacientesService.search(searchDto);
-      return { data: result };
+      return result; // Ya incluye data, total, skip, take, hasMore
     } catch (error) {
       console.error('Error en búsqueda de pacientes:', error);
       throw error;

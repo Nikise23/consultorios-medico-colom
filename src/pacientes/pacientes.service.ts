@@ -9,7 +9,7 @@ export class PacientesService {
   constructor(private prisma: PrismaService) {}
 
   async search(searchDto: SearchPacienteDto) {
-    const { dni, apellido } = searchDto;
+    const { dni, apellido, skip, take, showAll } = searchDto;
 
     const where: any = {
       activo: true,
@@ -45,14 +45,44 @@ export class PacientesService {
       }
     }
 
-    // Si hay filtros, buscar con ellos; si no, retornar todos los pacientes activos
-    return this.prisma.paciente.findMany({
+    // Obtener el total de pacientes que coinciden con los filtros
+    const total = await this.prisma.paciente.count({ where });
+
+    // Si hay búsqueda (dni o apellido), usar límite de 20
+    // Si no hay búsqueda y showAll es true, mostrar todos
+    // Si no hay búsqueda y showAll es false, usar paginación
+    let limit: number | undefined;
+    let offset: number | undefined;
+
+    if (dni || apellido) {
+      // Búsqueda: máximo 20 resultados
+      limit = 20;
+    } else if (showAll) {
+      // Mostrar todos sin límite
+      limit = undefined;
+      offset = undefined;
+    } else {
+      // Paginación: usar take y skip si vienen, sino usar valores por defecto
+      limit = take || 10;
+      offset = skip || 0;
+    }
+
+    const pacientes = await this.prisma.paciente.findMany({
       where,
-      take: dni || apellido ? 20 : 50,
+      take: limit,
+      skip: offset,
       orderBy: {
         apellido: 'asc',
       },
     });
+
+    return {
+      data: pacientes,
+      total,
+      skip: offset || 0,
+      take: limit || total,
+      hasMore: offset !== undefined && limit !== undefined ? (offset + limit) < total : false,
+    };
   }
 
   async findOne(id: number) {

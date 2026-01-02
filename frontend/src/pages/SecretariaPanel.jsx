@@ -13,7 +13,11 @@ export default function SecretariaPanel() {
   const [selectedPaciente, setSelectedPaciente] = useState(null)
   const [showAllPacientes, setShowAllPacientes] = useState(true)
   const [showEnviarConPago, setShowEnviarConPago] = useState(false)
+  const [currentPage, setCurrentPage] = useState(0)
+  const [showAll, setShowAll] = useState(false)
   const queryClient = useQueryClient()
+
+  const PAGE_SIZE = 10
 
   // Búsqueda específica
   const { data: pacientes, isLoading } = useQuery({
@@ -22,18 +26,23 @@ export default function SecretariaPanel() {
     enabled: searchValue.length > 0 && !showAllPacientes,
   })
 
-  // Lista de todos los pacientes (cuando no hay búsqueda)
-  const { data: allPacientes, isLoading: loadingAll, error: errorAll } = useQuery({
-    queryKey: ['pacientes', 'all'],
+  // Lista de todos los pacientes (cuando no hay búsqueda) con paginación
+  const { data: allPacientesResponse, isLoading: loadingAll, error: errorAll } = useQuery({
+    queryKey: ['pacientes', 'all', currentPage, showAll],
     queryFn: async () => {
-      const result = await getAllPacientes()
-      console.log('Resultado de getAllPacientes:', result)
-      // La respuesta de axios tiene estructura: {data: {data: [...]}}
-      // Necesitamos acceder a result.data.data o result.data
+      const params = showAll 
+        ? { showAll: true }
+        : { skip: currentPage * PAGE_SIZE, take: PAGE_SIZE }
+      const result = await searchPacientes(params)
       return result
     },
     enabled: showAllPacientes && searchValue.length === 0,
   })
+
+  // Extraer datos de la respuesta
+  const allPacientes = allPacientesResponse?.data?.data || allPacientesResponse?.data || []
+  const totalPacientes = allPacientesResponse?.data?.total || allPacientesResponse?.total || 0
+  const hasMore = allPacientesResponse?.data?.hasMore || false
 
   // Obtener atenciones activas (sala de espera y en atención)
   const { data: atencionesActivas, isLoading: loadingAtenciones } = useQuery({
@@ -72,6 +81,10 @@ export default function SecretariaPanel() {
       toast.success('Paciente eliminado exitosamente')
       queryClient.invalidateQueries(['pacientes'])
       setSelectedPaciente(null)
+      // Si estamos en la última página y ya no hay pacientes, volver a la página anterior
+      if (!showAll && allPacientes.length === 1 && currentPage > 0) {
+        setCurrentPage(prev => prev - 1)
+      }
     },
     onError: (error) => {
       toast.error(error.response?.data?.message || 'Error al eliminar paciente')
@@ -329,10 +342,17 @@ export default function SecretariaPanel() {
       {showAllPacientes && searchValue.length === 0 && (
         <div className="card mb-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold flex items-center">
-              <Users className="w-5 h-5 mr-2 text-primary-600" />
-              Pacientes Registrados
-            </h2>
+            <div className="flex items-center gap-4">
+              <h2 className="text-lg font-semibold flex items-center">
+                <Users className="w-5 h-5 mr-2 text-primary-600" />
+                Pacientes Registrados
+              </h2>
+              {totalPacientes > 0 && (
+                <span className="text-sm text-gray-600 bg-gray-100 px-3 py-1 rounded-full">
+                  Total: {totalPacientes} {totalPacientes === 1 ? 'paciente' : 'pacientes'}
+                </span>
+              )}
+            </div>
             <button
               onClick={() => {
                 setSelectedPaciente(null)
@@ -361,13 +381,9 @@ export default function SecretariaPanel() {
               </button>
             </div>
           ) : (() => {
-            // Manejar estructura anidada de axios: {data: {data: [...]}}
-            const pacientesData = allPacientes?.data?.data || allPacientes?.data
-            const pacientesArray = Array.isArray(pacientesData) ? pacientesData : []
-            
-            console.log('allPacientes completo:', allPacientes)
-            console.log('pacientesData:', pacientesData)
-            console.log('pacientesArray:', pacientesArray)
+            // La respuesta ahora tiene estructura: {data: [...], total: number, ...}
+            // allPacientes ya está extraído arriba
+            const pacientesArray = Array.isArray(allPacientes) ? allPacientes : []
             
             return pacientesArray.length > 0 ? (
               <>
@@ -523,6 +539,71 @@ export default function SecretariaPanel() {
             </div>
             )
           })()}
+
+          {/* Controles de paginación */}
+          {!loadingAll && !errorAll && allPacientes.length > 0 && (
+            <div className="mt-6 pt-4 border-t border-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                {!showAll && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setCurrentPage(prev => Math.max(0, prev - 1))
+                        setShowAll(false)
+                      }}
+                      disabled={currentPage === 0}
+                      className="btn btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      ← Anterior
+                    </button>
+                    <span className="text-sm text-gray-600 px-3">
+                      Página {currentPage + 1} de {Math.ceil(totalPacientes / PAGE_SIZE)}
+                      {' '}({currentPage * PAGE_SIZE + 1}-{Math.min((currentPage + 1) * PAGE_SIZE, totalPacientes)} de {totalPacientes})
+                    </span>
+                    <button
+                      onClick={() => {
+                        setCurrentPage(prev => prev + 1)
+                        setShowAll(false)
+                      }}
+                      disabled={!hasMore}
+                      className="btn btn-secondary text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Siguiente →
+                    </button>
+                  </>
+                )}
+                {showAll && (
+                  <span className="text-sm text-gray-600">
+                    Mostrando todos los {totalPacientes} pacientes
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {!showAll ? (
+                  <button
+                    onClick={() => {
+                      setShowAll(true)
+                      setCurrentPage(0)
+                    }}
+                    className="btn btn-primary text-sm"
+                  >
+                    <Users className="w-4 h-4 mr-1" />
+                    Mostrar Todos
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setShowAll(false)
+                      setCurrentPage(0)
+                    }}
+                    className="btn btn-secondary text-sm"
+                  >
+                    Ver por Páginas
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
