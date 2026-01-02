@@ -173,10 +173,11 @@ export class PacientesService {
   async remove(id: number) {
     await this.findOne(id); // Verifica que existe
     
-    // Soft delete: marcar como inactivo en lugar de borrar físicamente
-    return this.prisma.paciente.update({
+    // Eliminación física: eliminar el registro de la base de datos
+    // Las relaciones (atenciones, historias, pagos) se eliminarán automáticamente
+    // gracias a onDelete: Cascade en el schema de Prisma
+    return this.prisma.paciente.delete({
       where: { id },
-      data: { activo: false },
     });
   }
 }
