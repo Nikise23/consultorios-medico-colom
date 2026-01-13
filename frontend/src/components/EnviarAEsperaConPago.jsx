@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { X, Send, DollarSign, Wallet, CreditCard, Stethoscope, AlertCircle, Building2 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { enviarPacienteAEspera, getMedicos } from '../services/api'
+import { enviarPacienteAEspera, getMedicos, createPago } from '../services/api'
 
 export default function EnviarAEsperaConPago({ paciente, onClose, onSuccess }) {
   const [formData, setFormData] = useState({
@@ -13,10 +13,15 @@ export default function EnviarAEsperaConPago({ paciente, onClose, onSuccess }) {
     observacionesPago: '',
     observaciones: '',
     prioridad: false,
+    // Para pago mixto
+    montoEfectivo: '',
+    montoTransferencia: '',
   })
 
-  // Si el monto es 0, cambiar automáticamente a OBRA_SOCIAL
+  // Si el monto es 0, cambiar automáticamente a OBRA_SOCIAL (excepto si es MIXTO)
   useEffect(() => {
+    if (formData.tipoPago === 'MIXTO') return
+    
     const montoNumero = parseFloat(formData.monto) || 0
     if (montoNumero === 0 && formData.tipoPago !== 'OBRA_SOCIAL') {
       setFormData(prev => ({ ...prev, tipoPago: 'OBRA_SOCIAL' }))
@@ -34,7 +39,56 @@ export default function EnviarAEsperaConPago({ paciente, onClose, onSuccess }) {
   const medicos = medicosData?.data || []
 
   const enviarMutation = useMutation({
-    mutationFn: enviarPacienteAEspera,
+    mutationFn: async (data) => {
+      // Si es pago mixto, crear dos pagos separados
+      if (data.tipoPago === 'MIXTO') {
+        const montoEfectivo = parseFloat(data.montoEfectivo) || 0
+        const montoTransferencia = parseFloat(data.montoTransferencia) || 0
+        
+        // Primero enviar a espera con monto 0 para crear el paciente y la atención
+        // Esto también creará un pago de 0 que podemos ignorar
+        const { tipoPago, montoEfectivo: _, montoTransferencia: __, pacienteId: ___, ...dataSinPago } = data
+        const resultado = await enviarPacienteAEspera({
+          ...dataSinPago,
+          monto: 0,
+          tipoPago: 'OBRA_SOCIAL', // Usar OBRA_SOCIAL como placeholder
+        })
+        
+        // Obtener el pacienteId de la respuesta
+        const pacienteIdFinal = resultado?.paciente?.id || paciente?.id
+        
+        if (!pacienteIdFinal) {
+          throw new Error('No se pudo obtener el ID del paciente')
+        }
+        
+        // Crear pago en efectivo
+        if (montoEfectivo > 0) {
+          await createPago({
+            pacienteId: pacienteIdFinal,
+            monto: montoEfectivo,
+            tipoPago: 'EFECTIVO',
+            numeroComprobante: undefined,
+            observaciones: data.observacionesPago ? `(Pago Mixto - Efectivo) ${data.observacionesPago}` : '(Pago Mixto - Efectivo)',
+          })
+        }
+        
+        // Crear pago en transferencia
+        if (montoTransferencia > 0) {
+          await createPago({
+            pacienteId: pacienteIdFinal,
+            monto: montoTransferencia,
+            tipoPago: 'TRANSFERENCIA',
+            numeroComprobante: data.numeroComprobante || undefined,
+            observaciones: data.observacionesPago ? `(Pago Mixto - Transferencia) ${data.observacionesPago}` : '(Pago Mixto - Transferencia)',
+          })
+        }
+        
+        return resultado
+      } else {
+        // Pago normal, usar el flujo original
+        return await enviarPacienteAEspera(data)
+      }
+    },
     onSuccess: () => {
       toast.success('Pago registrado y paciente enviado a sala de espera')
       onSuccess()
@@ -55,6 +109,49 @@ export default function EnviarAEsperaConPago({ paciente, onClose, onSuccess }) {
       return
     }
 
+    // Validación para pago mixto
+    if (formData.tipoPago === 'MIXTO') {
+      const montoEfectivo = parseFloat(formData.montoEfectivo) || 0
+      const montoTransferencia = parseFloat(formData.montoTransferencia) || 0
+      const totalMixto = montoEfectivo + montoTransferencia
+      
+      if (totalMixto <= 0) {
+        toast.error('El total del pago mixto debe ser mayor a 0')
+        return
+      }
+      
+      if (montoEfectivo < 0 || montoTransferencia < 0) {
+        toast.error('Los montos no pueden ser negativos')
+        return
+      }
+      
+      if (montoEfectivo === 0 && montoTransferencia === 0) {
+        toast.error('Debe haber al menos un monto mayor a 0')
+        return
+      }
+
+      const data = {
+        dni: paciente.dni,
+        nombre: paciente.nombre,
+        apellido: paciente.apellido,
+        obraSocial: paciente.obraSocial,
+        medicoId: parseInt(formData.medicoId),
+        monto: totalMixto,
+        tipoPago: 'MIXTO',
+        numeroComprobante: formData.numeroComprobante || undefined,
+        observacionesPago: formData.observacionesPago || undefined,
+        observaciones: formData.observaciones || undefined,
+        prioridad: formData.prioridad || false,
+        actualizarDatos: false,
+        montoEfectivo: formData.montoEfectivo,
+        montoTransferencia: formData.montoTransferencia,
+      }
+
+      enviarMutation.mutate(data)
+      return
+    }
+
+    // Validación para pago normal
     if (formData.monto === '' || parseFloat(formData.monto) < 0) {
       toast.error('El monto no puede ser negativo')
       return
@@ -94,7 +191,12 @@ export default function EnviarAEsperaConPago({ paciente, onClose, onSuccess }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto" onWheel={(e) => {
+        // Prevenir scroll cuando el input numérico está enfocado
+        if (e.target.type === 'number' && document.activeElement === e.target) {
+          e.preventDefault()
+        }
+      }}>
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
           <div>
             <h2 className="text-xl font-semibold">Registrar Pago y Enviar a Sala de Espera</h2>
@@ -195,32 +297,35 @@ export default function EnviarAEsperaConPago({ paciente, onClose, onSuccess }) {
             </h3>
 
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Monto de la Consulta *
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
-                    $
-                  </span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    required
-                    value={formData.monto}
-                    onChange={(e) => setFormData({ ...formData, monto: e.target.value })}
-                    className="input pl-8"
-                    placeholder="0.00"
-                  />
+              {formData.tipoPago !== 'MIXTO' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Monto de la Consulta *
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                      $
+                    </span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      required={formData.tipoPago !== 'MIXTO'}
+                      value={formData.monto}
+                      onChange={(e) => setFormData({ ...formData, monto: e.target.value })}
+                      onWheel={(e) => e.target.blur()}
+                      className="input pl-8"
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Método de Pago *
                 </label>
-                {parseFloat(formData.monto) === 0 ? (
+                {parseFloat(formData.monto) === 0 && formData.tipoPago !== 'MIXTO' ? (
                   <div className="p-4 border-2 border-primary-500 bg-primary-50 rounded-lg">
                     <div className="flex flex-col items-center gap-2">
                       <Building2 className="w-6 h-6 text-primary-600" />
@@ -229,10 +334,10 @@ export default function EnviarAEsperaConPago({ paciente, onClose, onSuccess }) {
                     </div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <button
                       type="button"
-                      onClick={() => setFormData({ ...formData, tipoPago: 'EFECTIVO' })}
+                      onClick={() => setFormData({ ...formData, tipoPago: 'EFECTIVO', montoEfectivo: '', montoTransferencia: '' })}
                       className={`p-4 border-2 rounded-lg transition-colors ${
                         formData.tipoPago === 'EFECTIVO'
                           ? 'border-primary-500 bg-primary-50'
@@ -246,7 +351,7 @@ export default function EnviarAEsperaConPago({ paciente, onClose, onSuccess }) {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setFormData({ ...formData, tipoPago: 'TRANSFERENCIA' })}
+                      onClick={() => setFormData({ ...formData, tipoPago: 'TRANSFERENCIA', montoEfectivo: '', montoTransferencia: '' })}
                       className={`p-4 border-2 rounded-lg transition-colors ${
                         formData.tipoPago === 'TRANSFERENCIA'
                           ? 'border-primary-500 bg-primary-50'
@@ -258,9 +363,90 @@ export default function EnviarAEsperaConPago({ paciente, onClose, onSuccess }) {
                         <span className="font-medium">Transferencia</span>
                       </div>
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, tipoPago: 'MIXTO', monto: '' })}
+                      className={`p-4 border-2 rounded-lg transition-colors ${
+                        formData.tipoPago === 'MIXTO'
+                          ? 'border-primary-500 bg-primary-50'
+                          : 'border-gray-200 hover:border-primary-300'
+                      }`}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <DollarSign className="w-6 h-6 text-purple-600" />
+                        <span className="font-medium text-xs">Mixto</span>
+                      </div>
+                    </button>
                   </div>
                 )}
               </div>
+
+              {formData.tipoPago === 'MIXTO' && (
+                <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Monto en Efectivo *
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        required={formData.tipoPago === 'MIXTO'}
+                        value={formData.montoEfectivo}
+                        onChange={(e) => setFormData({ ...formData, montoEfectivo: e.target.value })}
+                        onWheel={(e) => e.target.blur()}
+                        className="input pl-8"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Monto en Transferencia *
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                        $
+                      </span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        required={formData.tipoPago === 'MIXTO'}
+                        value={formData.montoTransferencia}
+                        onChange={(e) => setFormData({ ...formData, montoTransferencia: e.target.value })}
+                        onWheel={(e) => e.target.blur()}
+                        className="input pl-8"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div className="pt-2 border-t border-purple-200">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-gray-700">Total:</span>
+                      <span className="text-lg font-bold text-purple-600">
+                        ${((parseFloat(formData.montoEfectivo) || 0) + (parseFloat(formData.montoTransferencia) || 0)).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Número de Comprobante (Transferencia)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.numeroComprobante}
+                      onChange={(e) => setFormData({ ...formData, numeroComprobante: e.target.value })}
+                      className="input"
+                      placeholder="Número de comprobante o referencia"
+                    />
+                  </div>
+                </div>
+              )}
 
               {formData.tipoPago === 'TRANSFERENCIA' && (
                 <div>

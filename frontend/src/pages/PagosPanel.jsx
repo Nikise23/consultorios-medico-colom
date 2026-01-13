@@ -369,6 +369,7 @@ export default function PagosPanel() {
                   <tr className="border-b border-gray-200">
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Fecha</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Paciente</th>
+                    <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Obra Social</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Monto</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Tipo</th>
                     <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Comprobante</th>
@@ -385,6 +386,9 @@ export default function PagosPanel() {
                       <td className="py-3 px-4 text-sm text-gray-900">
                         {pago.paciente?.nombre} {pago.paciente?.apellido}
                         <span className="text-gray-500 text-xs block">DNI: {pago.paciente?.dni}</span>
+                      </td>
+                      <td className="py-3 px-4 text-sm text-gray-600">
+                        {pago.paciente?.obraSocial || '-'}
                       </td>
                       <td className="py-3 px-4 text-sm font-semibold text-gray-900">
                         ${pago.monto.toFixed(2)}
@@ -476,6 +480,9 @@ export default function PagosPanel() {
                       <p>
                         <span className="font-medium">Paciente:</span> {pago.paciente?.nombre} {pago.paciente?.apellido} (DNI: {pago.paciente?.dni})
                       </p>
+                      {pago.paciente?.obraSocial && (
+                        <p><span className="font-medium">Obra Social:</span> {pago.paciente.obraSocial}</p>
+                      )}
                       <p>Tipo: {getTipoPagoLabel(pago.tipoPago, pago.monto)}</p>
                       {pago.numeroComprobante && (
                         <p>Comprobante: {pago.numeroComprobante}</p>

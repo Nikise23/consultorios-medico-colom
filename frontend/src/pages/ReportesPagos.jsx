@@ -479,6 +479,9 @@ export default function ReportesPagos() {
                                           Paciente
                                         </th>
                                         <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
+                                          Obra Social
+                                        </th>
+                                        <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">
                                           Tipo
                                         </th>
                                         <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">
@@ -497,6 +500,9 @@ export default function ReportesPagos() {
                                           </td>
                                           <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-900">
                                             {pago.paciente?.nombre} {pago.paciente?.apellido}
+                                          </td>
+                                          <td className="px-4 py-2 whitespace-nowrap text-sm text-gray-600">
+                                            {pago.paciente?.obraSocial || '-'}
                                           </td>
                                           <td className="px-4 py-2 whitespace-nowrap">
                                             {(() => {
@@ -538,7 +544,7 @@ export default function ReportesPagos() {
                                     </tbody>
                                     <tfoot className="bg-gray-50">
                                       <tr>
-                                        <td colSpan="3" className="px-4 py-2 text-sm font-medium text-gray-900">
+                                        <td colSpan="4" className="px-4 py-2 text-sm font-medium text-gray-900">
                                           Total
                                         </td>
                                         <td className="px-4 py-2 text-sm font-bold text-gray-900 text-right">
@@ -697,6 +703,9 @@ export default function ReportesPagos() {
                           Paciente
                         </th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Obra Social
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
                           Tipo
                         </th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
@@ -726,7 +735,7 @@ export default function ReportesPagos() {
                         if (pagosFiltrados.length === 0) {
                           return (
                             <tr>
-                              <td colSpan="5" className="px-4 py-8 text-center text-gray-500">
+                              <td colSpan="6" className="px-4 py-8 text-center text-gray-500">
                                 No hay pagos para el día seleccionado
                               </td>
                             </tr>
@@ -740,6 +749,9 @@ export default function ReportesPagos() {
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
                             {pago.paciente?.nombre} {pago.paciente?.apellido}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">
+                            {pago.paciente?.obraSocial || '-'}
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap">
                             {(() => {
@@ -782,7 +794,7 @@ export default function ReportesPagos() {
                     </tbody>
                     <tfoot className="bg-gray-50">
                       <tr>
-                        <td colSpan="3" className="px-4 py-3 text-sm font-medium text-gray-900">
+                        <td colSpan="4" className="px-4 py-3 text-sm font-medium text-gray-900">
                           {diaSeleccionado ? 'Total del día' : 'Total'}
                         </td>
                         <td className="px-4 py-3 text-sm font-bold text-gray-900 text-right">

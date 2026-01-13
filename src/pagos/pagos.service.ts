@@ -85,6 +85,7 @@ export class PagosService {
     const pagos = await this.prisma.pago.findMany({
       where: { pacienteId },
       include: {
+        paciente: true,
         historiaClinica: {
           include: {
             medico: {
