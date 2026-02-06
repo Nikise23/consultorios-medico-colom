@@ -109,9 +109,14 @@ export default function VerHistoriaClinica({ historia, onClose }) {
               </div>
             </div>
             <div className="p-4 border border-gray-200 rounded-lg bg-gray-50">
-              <div className="text-gray-700 whitespace-pre-wrap">
-                {historia?.observaciones || 'Sin contenido registrado'}
-              </div>
+              <div
+                className="text-gray-700 [&_b]:font-bold [&_i]:italic [&_u]:underline"
+                dangerouslySetInnerHTML={{
+                  __html: historia?.observaciones?.includes?.('<') && historia?.observaciones?.includes?.('>')
+                    ? historia.observaciones
+                    : `<span style="white-space: pre-wrap">${(historia?.observaciones || 'Sin contenido registrado').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`
+                }}
+              />
             </div>
             {historia?.medico && (
               <div className="mt-3 text-sm text-gray-600">
@@ -189,9 +194,14 @@ export default function VerHistoriaClinica({ historia, onClose }) {
                               )}
                             </div>
                           </div>
-                          <p className="text-gray-700 whitespace-pre-wrap text-sm">
-                            {historiaItem.observaciones || 'Sin contenido'}
-                          </p>
+                          <div
+                            className="text-gray-700 text-sm prose prose-sm max-w-none"
+                            dangerouslySetInnerHTML={{
+                              __html: historiaItem?.observaciones?.includes?.('<') && historiaItem?.observaciones?.includes?.('>')
+                                ? historiaItem.observaciones
+                                : `<span style="white-space: pre-wrap">${(historiaItem?.observaciones || 'Sin contenido').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`
+                            }}
+                          />
                         </div>
                       ))}
                         </div>

@@ -168,7 +168,13 @@ export default function MedicoPanel() {
             </div>
           ) : atencionesEspera?.data?.length > 0 ? (
             <div className="space-y-3">
-              {atencionesEspera.data.map((atencion) => {
+              {[...(atencionesEspera.data || [])]
+                .sort((a, b) => {
+                  if (a.prioridad && !b.prioridad) return -1
+                  if (!a.prioridad && b.prioridad) return 1
+                  return new Date(a.horaIngreso) - new Date(b.horaIngreso)
+                })
+                .map((atencion) => {
                 const tienePrioridad = atencion.prioridad === true
                 return (
                   <div
@@ -207,7 +213,7 @@ export default function MedicoPanel() {
                           {atencion.pagoAsociado?.observaciones && (
                             <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
                               <p className="font-semibold text-blue-900 mb-1">Observación de Pago:</p>
-                              <p className="text-blue-800">{atencion.pagoAsociado.observaciones}</p>
+                              <p className="text-blue-800 font-bold">{atencion.pagoAsociado.observaciones}</p>
                             </div>
                           )}
                         </div>

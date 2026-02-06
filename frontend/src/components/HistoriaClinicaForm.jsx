@@ -3,6 +3,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { X, Save, FileText, Stethoscope, Clock, ChevronDown, ChevronUp } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { createHistoriaClinica, getHistoriasByPaciente } from '../services/api'
+import EditorHistoriaClinica from './EditorHistoriaClinica'
 
 export default function HistoriaClinicaForm({ atencion, onClose, onSuccess }) {
   // Estado para controlar qué especialidades están expandidas
@@ -67,19 +68,18 @@ export default function HistoriaClinicaForm({ atencion, onClose, onSuccess }) {
     },
   })
 
-  // Función para calcular la edad (evitar problemas de zona horaria)
-  const calcularEdad = (fechaNacimiento) => {
+  // Función para calcular la edad en años y meses (evitar problemas de zona horaria)
+  const calcularEdadCompleta = (fechaNacimiento) => {
     if (!fechaNacimiento) return null
     
     const hoy = new Date()
     
-    // Parsear la fecha manualmente para evitar problemas de zona horaria
     let anio, mes, dia
     if (typeof fechaNacimiento === 'string') {
       const fechaPart = fechaNacimiento.split('T')[0]
       const partes = fechaPart.split('-').map(Number)
       anio = partes[0]
-      mes = partes[1] - 1 // Mes en JavaScript es 0-11
+      mes = partes[1] - 1
       dia = partes[2]
     } else {
       const fecha = new Date(fechaNacimiento)
@@ -88,17 +88,33 @@ export default function HistoriaClinicaForm({ atencion, onClose, onSuccess }) {
       dia = fecha.getDate()
     }
     
-    // Crear fecha de nacimiento en hora local
     const nacimiento = new Date(anio, mes, dia)
     
-    let edad = hoy.getFullYear() - nacimiento.getFullYear()
-    const mesDiff = hoy.getMonth() - nacimiento.getMonth()
-    
-    if (mesDiff < 0 || (mesDiff === 0 && hoy.getDate() < nacimiento.getDate())) {
-      edad--
+    let totalMeses = (hoy.getFullYear() - nacimiento.getFullYear()) * 12 + (hoy.getMonth() - nacimiento.getMonth())
+    if (hoy.getDate() < nacimiento.getDate()) {
+      totalMeses--
     }
     
-    return edad
+    const años = Math.floor(totalMeses / 12)
+    const meses = totalMeses % 12
+    
+    return { años, meses }
+  }
+
+  // Formatear edad para mostrar: con meses solo para 0-2 años
+  const formatearEdad = (fechaNacimiento) => {
+    const edad = calcularEdadCompleta(fechaNacimiento)
+    if (!edad) return '-'
+    
+    const { años, meses } = edad
+    
+    if (años <= 2) {
+      const textoAños = años === 0 ? '0 años' : años === 1 ? '1 año' : '2 años'
+      const textoMeses = meses === 1 ? '1 mes' : `${meses} meses`
+      return años === 0 && meses === 0 ? 'Recién nacido' : `${textoAños} y ${textoMeses}`
+    }
+    
+    return `${años} ${años === 1 ? 'año' : 'años'}`
   }
 
   // Formatear fecha de nacimiento (evitar problemas de zona horaria)
@@ -130,10 +146,17 @@ export default function HistoriaClinicaForm({ atencion, onClose, onSuccess }) {
     })
   }
 
+  const isEmptyContent = (html) => {
+    if (!html) return true
+    const div = document.createElement('div')
+    div.innerHTML = html
+    return !div.textContent?.trim()
+  }
+
   const handleSubmit = (e) => {
     e.preventDefault()
     
-    if (!formData.contenido || formData.contenido.trim() === '') {
+    if (isEmptyContent(formData.contenido)) {
       toast.error('Debes completar la historia clínica')
       return
     }
@@ -175,7 +198,13 @@ export default function HistoriaClinicaForm({ atencion, onClose, onSuccess }) {
               <Stethoscope className="w-5 h-5 mr-2" />
               Datos del Paciente
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {atencion.pagoAsociado?.observaciones && (
+                <div className="w-full mt-2 mb-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-xs font-medium text-amber-800 mb-1">Observación de Pago:</p>
+                  <p className="text-sm font-bold text-amber-900">{atencion.pagoAsociado.observaciones}</p>
+                </div>
+              )}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <p className="text-xs font-medium text-gray-600 mb-1">Nombre</p>
                 <p className="text-sm font-semibold text-gray-900">
@@ -206,7 +235,7 @@ export default function HistoriaClinicaForm({ atencion, onClose, onSuccess }) {
                 <p className="text-xs font-medium text-gray-600 mb-1">Edad</p>
                 <p className="text-sm font-semibold text-primary-700">
                   {atencion.paciente?.fechaNacimiento 
-                    ? `${calcularEdad(atencion.paciente.fechaNacimiento)} ${calcularEdad(atencion.paciente.fechaNacimiento) === 1 ? 'año' : 'años'}`
+                    ? formatearEdad(atencion.paciente.fechaNacimiento)
                     : '-'}
                 </p>
               </div>
@@ -275,9 +304,14 @@ export default function HistoriaClinicaForm({ atencion, onClose, onSuccess }) {
                               )}
                             </div>
                           </div>
-                          <p className="text-gray-700 whitespace-pre-wrap line-clamp-3">
-                            {historia.observaciones || 'Sin contenido'}
-                          </p>
+                          <div
+                            className="text-gray-700 text-sm [&_b]:font-bold [&_i]:italic [&_u]:underline"
+                            dangerouslySetInnerHTML={{
+                              __html: historia?.observaciones?.includes?.('<') && historia?.observaciones?.includes?.('>')
+                                ? historia.observaciones
+                                : `<span style="white-space: pre-wrap">${(historia?.observaciones || 'Sin contenido').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`
+                            }}
+                          />
                         </div>
                       ))}
                         </div>
@@ -295,20 +329,18 @@ export default function HistoriaClinicaForm({ atencion, onClose, onSuccess }) {
               <label className="block text-sm font-medium text-gray-700">
                 Nueva Historia Clínica *
               </label>
-              {formData.contenido.trim() !== '' && (
+              {!isEmptyContent(formData.contenido) && (
                 <span className="text-xs text-green-600 flex items-center">
                   <Clock className="w-3 h-3 mr-1" />
                   Autoguardado activo
                 </span>
               )}
             </div>
-            <textarea
+            <EditorHistoriaClinica
               value={formData.contenido}
-              onChange={(e) => setFormData({ ...formData, contenido: e.target.value })}
-              className="input"
-              rows="15"
-              placeholder="Complete aquí la historia clínica completa. Puede incluir motivo de consulta, síntomas, signos vitales, diagnóstico, tratamiento, observaciones, etc."
-              required
+              onChange={(contenido) => setFormData({ ...formData, contenido })}
+              placeholder="Complete aquí la historia clínica completa. Puede incluir motivo de consulta, síntomas, signos vitales, diagnóstico, tratamiento, observaciones, etc. Use las herramientas para dar formato al texto."
+              rows={15}
             />
             <p className="mt-2 text-xs text-gray-500">
               Complete toda la información de la consulta en este campo. El contenido se guarda automáticamente mientras escribe.

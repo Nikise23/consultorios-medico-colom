@@ -166,8 +166,14 @@ export default function SecretariaPanel() {
             )
           }
 
-          // Separar por estado
-          const enEspera = atencionesArray.filter(a => a.estado === 'EN_ESPERA')
+          // Separar por estado y ordenar: prioridad siempre primero en sala de espera
+          const enEspera = atencionesArray
+            .filter(a => a.estado === 'EN_ESPERA')
+            .sort((a, b) => {
+              if (a.prioridad && !b.prioridad) return -1
+              if (!a.prioridad && b.prioridad) return 1
+              return new Date(a.horaIngreso) - new Date(b.horaIngreso)
+            })
           const atendiendo = atencionesArray.filter(a => a.estado === 'ATENDIENDO')
 
           return (
@@ -231,7 +237,7 @@ export default function SecretariaPanel() {
                             {atencion.pagoAsociado?.observaciones && (
                               <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs">
                                 <p className="font-semibold text-blue-900 mb-1">Observación de Pago:</p>
-                                <p className="text-blue-800">{atencion.pagoAsociado.observaciones}</p>
+                                <p className="text-blue-800 font-bold">{atencion.pagoAsociado.observaciones}</p>
                               </div>
                             )}
                           </div>

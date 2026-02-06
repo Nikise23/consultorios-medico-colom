@@ -106,14 +106,14 @@ export class AtencionesService {
       },
     });
 
-    // Agregar pagos asociados a cada atención
+    // Agregar pagos asociados a cada atención (pago creado justo antes de la atención)
     const atencionesConPagos = await Promise.all(
       atenciones.map(async (atencion) => {
         const fechaAtencion = new Date(atencion.createdAt);
         const fechaDesde = new Date(fechaAtencion);
         fechaDesde.setHours(fechaDesde.getHours() - 2);
         const fechaHasta = new Date(fechaAtencion);
-        fechaHasta.setHours(fechaHasta.getHours() + 1);
+        fechaHasta.setSeconds(fechaHasta.getSeconds() + 5);
 
         const pagoAsociado = await this.prisma.pago.findFirst({
           where: {
@@ -161,14 +161,14 @@ export class AtencionesService {
       },
     });
 
-    // Agregar pagos asociados a cada atención
+    // Agregar pagos asociados a cada atención (pago creado justo antes de la atención)
     const atencionesConPagos = await Promise.all(
       atenciones.map(async (atencion) => {
         const fechaAtencion = new Date(atencion.createdAt);
         const fechaDesde = new Date(fechaAtencion);
         fechaDesde.setHours(fechaDesde.getHours() - 2);
         const fechaHasta = new Date(fechaAtencion);
-        fechaHasta.setHours(fechaHasta.getHours() + 1);
+        fechaHasta.setSeconds(fechaHasta.getSeconds() + 5);
 
         const pagoAsociado = await this.prisma.pago.findFirst({
           where: {
@@ -218,7 +218,7 @@ export class AtencionesService {
       throw new BadRequestException(`La atención no está en estado EN_ESPERA. Estado actual: ${atencion.estado}`);
     }
 
-    return this.prisma.atencion.update({
+    const atencionActualizada = await this.prisma.atencion.update({
       where: { id },
       data: {
         estado: EstadoAtencion.ATENDIENDO,
@@ -233,6 +233,32 @@ export class AtencionesService {
         },
       },
     });
+
+    // Incluir pago asociado para mostrar observaciones en el formulario de historia clínica
+    const fechaAtencion = new Date(atencionActualizada.createdAt);
+    const fechaDesde = new Date(fechaAtencion);
+    fechaDesde.setHours(fechaDesde.getHours() - 2);
+    const fechaHasta = new Date(fechaAtencion);
+    fechaHasta.setSeconds(fechaHasta.getSeconds() + 5);
+
+    const pagoAsociado = await this.prisma.pago.findFirst({
+      where: {
+        pacienteId: atencionActualizada.pacienteId,
+        fechaPago: {
+          gte: fechaDesde,
+          lte: fechaHasta,
+        },
+        historiaClinicaId: null,
+      },
+      orderBy: {
+        fechaPago: 'desc',
+      },
+    });
+
+    return {
+      ...atencionActualizada,
+      pagoAsociado,
+    };
   }
 
   /**
@@ -302,12 +328,12 @@ export class AtencionesService {
           select: { id: true, createdAt: true },
         });
 
-        // Buscar pago asociado
+        // Buscar pago asociado (pago creado justo antes de esta atención)
         const fechaAtencion = new Date(atencion.createdAt);
         const fechaDesde = new Date(fechaAtencion);
         fechaDesde.setHours(fechaDesde.getHours() - 2);
         const fechaHasta = new Date(fechaAtencion);
-        fechaHasta.setHours(fechaHasta.getHours() + 1);
+        fechaHasta.setSeconds(fechaHasta.getSeconds() + 5);
 
         const pagoAsociado = await this.prisma.pago.findFirst({
           where: {
@@ -458,14 +484,16 @@ export class AtencionesService {
         },
       });
 
-      // Agregar pagos asociados a cada atención
+      // Agregar pagos asociados a cada atención (cada atención tiene su propio pago del "enviar a espera")
+      // El pago se crea justo antes de la atención, así que buscamos el pago con fechaPago <= createdAt
+      // para que la misma persona con 2 atenciones (2 médicos) tenga la observación correcta en cada una
       const atencionesConPagos = await Promise.all(
         atenciones.map(async (atencion) => {
           const fechaAtencion = new Date(atencion.createdAt);
           const fechaDesde = new Date(fechaAtencion);
           fechaDesde.setHours(fechaDesde.getHours() - 2);
           const fechaHasta = new Date(fechaAtencion);
-          fechaHasta.setHours(fechaHasta.getHours() + 1);
+          fechaHasta.setSeconds(fechaHasta.getSeconds() + 5); // Pago creado justo antes de la atención
 
           const pagoAsociado = await this.prisma.pago.findFirst({
             where: {
@@ -477,7 +505,7 @@ export class AtencionesService {
               historiaClinicaId: null,
             },
             orderBy: {
-              fechaPago: 'desc',
+              fechaPago: 'desc', // El más reciente antes de la atención = el de esta atención
             },
           });
 
