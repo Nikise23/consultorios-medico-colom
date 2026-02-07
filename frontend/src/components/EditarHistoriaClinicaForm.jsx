@@ -228,9 +228,14 @@ export default function EditarHistoriaClinicaForm({ historia, onClose, onSuccess
 
             <div className="border border-gray-200 rounded-lg p-4 mb-4">
               <p className="font-medium text-gray-700 text-sm mb-2">Historia Clínica Anterior:</p>
-              <p className="text-gray-600 text-sm whitespace-pre-wrap">
-                {historia.observaciones || 'Sin contenido'}
-              </p>
+              <div
+                className="text-gray-600 text-sm [&_b]:font-bold [&_i]:italic [&_u]:underline"
+                dangerouslySetInnerHTML={{
+                  __html: historia?.observaciones?.includes?.('<') && historia?.observaciones?.includes?.('>')
+                    ? historia.observaciones
+                    : `<span style="white-space: pre-wrap">${(historia?.observaciones || 'Sin contenido').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`
+                }}
+              />
               <p className="text-xs text-gray-500 mt-4">
                 Creada: {new Date(historia.createdAt).toLocaleString('es-AR')}
               </p>

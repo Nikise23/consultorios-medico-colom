@@ -907,7 +907,14 @@ export default function HistoriasClinicas() {
                               {historia.observaciones ? (
                                 <div>
                                   <p className="font-medium text-gray-700 text-sm mb-2">Historia Clínica:</p>
-                                  <p className="text-gray-600 text-sm whitespace-pre-wrap">{historia.observaciones}</p>
+                                  <div
+                                    className="text-gray-600 text-sm [&_b]:font-bold [&_i]:italic [&_u]:underline"
+                                    dangerouslySetInnerHTML={{
+                                      __html: historia.observaciones.includes?.('<') && historia.observaciones.includes?.('>')
+                                        ? historia.observaciones
+                                        : `<span style="white-space: pre-wrap">${(historia.observaciones || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`
+                                    }}
+                                  />
                                 </div>
                               ) : (
                                 <p className="text-gray-500 text-sm">Sin contenido registrado</p>
@@ -1027,7 +1034,14 @@ export default function HistoriasClinicas() {
                                 {historia.observaciones ? (
                                   <div>
                                     <p className="font-medium text-gray-700 text-sm mb-2">Historia Clínica:</p>
-                                    <p className="text-gray-600 text-sm whitespace-pre-wrap">{historia.observaciones}</p>
+                                    <div
+                                      className="text-gray-600 text-sm [&_b]:font-bold [&_i]:italic [&_u]:underline"
+                                      dangerouslySetInnerHTML={{
+                                        __html: historia.observaciones.includes?.('<') && historia.observaciones.includes?.('>')
+                                          ? historia.observaciones
+                                          : `<span style="white-space: pre-wrap">${(historia.observaciones || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</span>`
+                                      }}
+                                    />
                                   </div>
                                 ) : (
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
