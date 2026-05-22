@@ -39,9 +39,6 @@ lerna-debug.log*
 .env.local
 .env.*.local
 
-# Prisma
-/prisma/migrations
-
 # Excluir todos los archivos .md excepto README.md y guías de despliegue
 *.md
 !README.md
@@ -49,6 +46,7 @@ lerna-debug.log*
 !**/README.md
 !DEPLOY.md
 !DEPLOY-UNIFIED.md
+!docs/AGENDA-CITAS.md
 
 
 

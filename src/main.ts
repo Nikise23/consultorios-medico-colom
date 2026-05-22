@@ -80,6 +80,7 @@ async function bootstrap() {
         '/usuarios',
         '/medicos',
         '/pagos',
+        '/public',
         '/health'
       ];
       

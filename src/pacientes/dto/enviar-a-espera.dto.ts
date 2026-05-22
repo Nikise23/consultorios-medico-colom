@@ -71,6 +71,11 @@ export class EnviarAEsperaDto {
   @IsBoolean()
   @IsOptional()
   prioridad?: boolean;
+
+  /** Vincula check-in con cita agendada */
+  @IsInt()
+  @IsOptional()
+  citaId?: number;
 }
 
 

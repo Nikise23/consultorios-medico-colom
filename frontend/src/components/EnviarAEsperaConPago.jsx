@@ -4,9 +4,15 @@ import { X, Send, DollarSign, Wallet, CreditCard, Stethoscope, AlertCircle, Buil
 import toast from 'react-hot-toast'
 import { enviarPacienteAEspera, getMedicos, createPago } from '../services/api'
 
-export default function EnviarAEsperaConPago({ paciente, onClose, onSuccess }) {
+export default function EnviarAEsperaConPago({
+  paciente,
+  onClose,
+  onSuccess,
+  medicoIdPreseleccionado,
+  citaId,
+}) {
   const [formData, setFormData] = useState({
-    medicoId: '',
+    medicoId: medicoIdPreseleccionado?.toString() || '',
     monto: '',
     tipoPago: 'EFECTIVO',
     numeroComprobante: '',
@@ -145,6 +151,7 @@ export default function EnviarAEsperaConPago({ paciente, onClose, onSuccess }) {
         actualizarDatos: false,
         montoEfectivo: formData.montoEfectivo,
         montoTransferencia: formData.montoTransferencia,
+        ...(citaId ? { citaId } : {}),
       }
 
       enviarMutation.mutate(data)
@@ -174,6 +181,7 @@ export default function EnviarAEsperaConPago({ paciente, onClose, onSuccess }) {
       observaciones: formData.observaciones || undefined,
       prioridad: formData.prioridad || false,
       actualizarDatos: false,
+      ...(citaId ? { citaId } : {}),
     }
 
     enviarMutation.mutate(data)

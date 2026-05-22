@@ -31,6 +31,15 @@ enum TipoPago {
   OBRA_SOCIAL
 }
 
+enum EstadoCita {
+  PROGRAMADA
+  CONFIRMADA
+  CANCELADA
+  NO_ASISTIO
+  CHECKIN
+  COMPLETADA
+}
+
 model Usuario {
   id        Int      @id @default(autoincrement())
   email     String   @unique
@@ -61,6 +70,7 @@ model Medico {
   usuario   Usuario      @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
   atenciones Atencion[]
   historias  HistoriaClinica[]
+  citas      Cita[]
 
   @@map("medicos")
 }
@@ -83,6 +93,7 @@ model Paciente {
   atenciones      Atencion[]
   historias       HistoriaClinica[]
   pagos           Pago[]
+  citas           Cita[]
 
   @@map("pacientes")
 }
@@ -102,6 +113,7 @@ model Atencion {
   paciente Paciente        @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
   medico   Medico          @relation(fields: [medicoId], references: [id], onDelete: Cascade)
   historia HistoriaClinica?
+  cita     Cita?
 
   @@index([estado])
   @@index([medicoId, estado])
@@ -159,5 +171,31 @@ model Pago {
   @@index([fechaPago])
   @@index([historiaClinicaId])
   @@map("pagos")
+}
+
+model Cita {
+  id              Int         @id @default(autoincrement())
+  pacienteId      Int
+  medicoId        Int
+  fechaHora       DateTime
+  duracionMinutos Int         @default(20)
+  estado          EstadoCita  @default(PROGRAMADA)
+  motivo          String?     @db.Text
+  notas           String?     @db.Text
+  atencionId      Int?        @unique
+  googleEventId   String?
+  emailEnviadoAt  DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  paciente  Paciente  @relation(fields: [pacienteId], references: [id], onDelete: Cascade)
+  medico    Medico    @relation(fields: [medicoId], references: [id], onDelete: Cascade)
+  atencion  Atencion? @relation(fields: [atencionId], references: [id], onDelete: SetNull)
+
+  @@index([medicoId, fechaHora])
+  @@index([pacienteId])
+  @@index([estado])
+  @@index([fechaHora])
+  @@map("citas")
 }
 

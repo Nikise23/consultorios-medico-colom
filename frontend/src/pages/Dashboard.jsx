@@ -1,5 +1,5 @@
 import { useAuth } from '../contexts/AuthContext'
-import { LayoutDashboard, Users, Stethoscope, FileText, DollarSign } from 'lucide-react'
+import { LayoutDashboard, Users, Stethoscope, FileText, DollarSign, Calendar } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 export default function Dashboard() {
@@ -56,6 +56,30 @@ export default function Dashboard() {
                 className="text-primary-600 hover:text-primary-700 font-medium text-sm"
               >
                 Ir al panel →
+              </a>
+            </div>
+          </div>
+        )}
+
+        {user?.rol === 'ADMINISTRADOR' && (
+          <div className="card hover:shadow-lg transition-shadow">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 bg-indigo-100 rounded-lg p-3">
+                <Calendar className="w-6 h-6 text-indigo-600" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-medium text-gray-900">Agenda de Citas</h3>
+                <p className="text-sm text-gray-500">
+                  Prueba: solo visible para administrador
+                </p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <a
+                href="/agenda"
+                className="text-primary-600 hover:text-primary-700 font-medium text-sm"
+              >
+                Ir a la agenda →
               </a>
             </div>
           </div>

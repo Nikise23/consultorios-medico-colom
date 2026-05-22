@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { LogOut, LayoutDashboard, Users, Stethoscope, FileText, DollarSign, UserPlus, UserCircle } from 'lucide-react'
+import { LogOut, LayoutDashboard, Users, Stethoscope, FileText, DollarSign, UserPlus, UserCircle, Calendar } from 'lucide-react'
 import PerfilUsuario from './PerfilUsuario'
 
 export default function Layout() {
@@ -73,6 +73,20 @@ export default function Layout() {
                       <span className="hidden sm:inline">Pagos</span>
                     </Link>
                   </>
+                )}
+
+                {user?.rol === 'ADMINISTRADOR' && (
+                  <Link
+                    to="/agenda"
+                    className={`inline-flex items-center px-1.5 sm:px-2 pt-1 border-b-2 text-xs sm:text-sm font-medium whitespace-nowrap ${
+                      isActive('/agenda')
+                        ? 'border-primary-500 text-gray-900'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <Calendar className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-1 flex-shrink-0" />
+                    <span className="hidden sm:inline">Agenda</span>
+                  </Link>
                 )}
 
                 {user?.rol === 'MEDICO' && (

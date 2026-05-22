@@ -13,6 +13,7 @@ import {
 import { PacientesService } from './pacientes.service';
 import { AtencionesService } from '../atenciones/atenciones.service';
 import { PagosService } from '../pagos/pagos.service';
+import { CitasService } from '../citas/citas.service';
 import { CreatePacienteDto } from './dto/create-paciente.dto';
 import { UpdatePacienteDto } from './dto/update-paciente.dto';
 import { SearchPacienteDto } from './dto/search-paciente.dto';
@@ -30,6 +31,7 @@ export class PacientesController {
     private readonly pacientesService: PacientesService,
     private readonly atencionesService: AtencionesService,
     private readonly pagosService: PagosService,
+    private readonly citasService: CitasService,
   ) {}
 
   @Get('search')
@@ -128,10 +130,19 @@ export class PacientesController {
       prioridad: enviarAEsperaDto.prioridad || false,
     });
 
+    let cita = null;
+    if (enviarAEsperaDto.citaId) {
+      cita = await this.citasService.vincularAtencion(
+        enviarAEsperaDto.citaId,
+        atencion.id,
+      );
+    }
+
     return {
       paciente,
       pago,
       atencion,
+      cita,
       message: 'Pago registrado y paciente enviado a sala de espera exitosamente',
     };
   }

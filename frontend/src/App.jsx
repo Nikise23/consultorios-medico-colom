@@ -9,6 +9,7 @@ import HistoriasClinicas from './pages/HistoriasClinicas'
 import PagosPanel from './pages/PagosPanel'
 import ReportesPagos from './pages/ReportesPagos'
 import GestionUsuarios from './pages/GestionUsuarios'
+import AgendaCitas from './pages/AgendaCitas'
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth()
@@ -68,6 +69,15 @@ function App() {
           element={
             <RoleRoute allowedRoles={['SECRETARIA', 'ADMINISTRADOR']}>
               <PagosPanel />
+            </RoleRoute>
+          }
+        />
+
+        <Route
+          path="agenda"
+          element={
+            <RoleRoute allowedRoles={['ADMINISTRADOR']}>
+              <AgendaCitas />
             </RoleRoute>
           }
         />
