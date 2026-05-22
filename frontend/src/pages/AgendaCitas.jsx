@@ -20,6 +20,7 @@ import {
 import CitaFormModal from '../components/CitaFormModal'
 import EnviarAEsperaConPago from '../components/EnviarAEsperaConPago'
 import CitaCardItem from '../components/CitaCardItem'
+import { normalizeApiList } from '../utils/normalizeApiList'
 
 function startOfWeek(d) {
   const date = new Date(d)
@@ -91,7 +92,7 @@ export default function AgendaCitas() {
     queryKey: ['medicos'],
     queryFn: () => getMedicos(),
   })
-  const medicos = medicosData?.data || []
+  const medicos = normalizeApiList(medicosData)
 
   const weekParams = useMemo(
     () => ({
@@ -115,8 +116,8 @@ export default function AgendaCitas() {
   })
 
   const citas = appliedSearch
-    ? citasBusquedaData?.data || []
-    : citasSemanaData?.data || []
+    ? normalizeApiList(citasBusquedaData)
+    : normalizeApiList(citasSemanaData)
   const isLoading = appliedSearch ? loadingBusqueda : loadingSemana
 
   const citasPorDia = useMemo(() => {
