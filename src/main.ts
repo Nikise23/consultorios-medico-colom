@@ -71,8 +71,10 @@ async function bootstrap() {
     // Este middleware se ejecuta después de que NestJS haya intentado procesar las rutas
     // Si NestJS no manejó la ruta (no envió respuesta), servimos el index.html
     app.use((req, res, next) => {
-      // Lista de rutas de API que NestJS maneja
-      const apiRoutes = [
+      const path = req.path;
+
+      // Rutas de API que NestJS maneja
+      const apiPrefixes = [
         '/auth',
         '/pacientes',
         '/atenciones',
@@ -81,14 +83,15 @@ async function bootstrap() {
         '/medicos',
         '/pagos',
         '/citas',
-        '/agenda',
         '/public',
-        '/health'
+        '/health',
       ];
-      
-      const isApiRoute = apiRoutes.some(route => req.path.startsWith(route));
-      
-      // Si es una ruta de API, dejar que NestJS la maneje
+
+      const isApiRoute =
+        apiPrefixes.some((route) => path.startsWith(route)) ||
+        path.startsWith('/agenda/medicos');
+
+      // /agenda es página del frontend; /agenda/medicos/* es API
       if (isApiRoute) {
         return next();
       }
