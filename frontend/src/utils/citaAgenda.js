@@ -19,25 +19,10 @@ export function calcularResumenDia(citasDia) {
   }
 }
 
-/** Minutos antes del turno en que se habilita enviar a sala de espera */
-export const MINUTOS_ANTES_CHECKIN = 15
-
 export function puedeEnviarEsperaAhora(fechaHora) {
-  const ahora = new Date()
-  const turno = new Date(fechaHora)
-  const ventanaInicio = new Date(
-    turno.getTime() - MINUTOS_ANTES_CHECKIN * 60 * 1000,
-  )
-  return ahora >= ventanaInicio
-}
-
-export function horaDisponibleCheckin(fechaHora) {
-  const turno = new Date(fechaHora)
-  const ventanaInicio = new Date(
-    turno.getTime() - MINUTOS_ANTES_CHECKIN * 60 * 1000,
-  )
-  return ventanaInicio.toLocaleTimeString('es-AR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const hoy = new Date()
+  hoy.setHours(0, 0, 0, 0)
+  const diaTurno = new Date(fechaHora)
+  diaTurno.setHours(0, 0, 0, 0)
+  return diaTurno <= hoy
 }
