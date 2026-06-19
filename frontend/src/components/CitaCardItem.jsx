@@ -15,6 +15,7 @@ import {
   getTipoNotificacion,
 } from '../utils/citaNotificaciones'
 import { puedeEnviarEsperaAhora } from '../utils/citaAgenda'
+import { formatHora24, TZ_ARGENTINA } from '../utils/formatFecha'
 
 export default function CitaCardItem({
   cita,
@@ -27,17 +28,16 @@ export default function CitaCardItem({
   onEdit,
   onNoAsistio,
   onCancelar,
+  onEliminar,
   mostrarFecha = false,
 }) {
   const notif = getTipoNotificacion(cita.paciente?.email)
   const fechaHora = new Date(cita.fechaHora)
   const checkinDisponible =
     puedeCheckin(cita) && puedeEnviarEsperaAhora(cita.fechaHora)
-  const hora = fechaHora.toLocaleTimeString('es-AR', {
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  const hora = formatHora24(cita.fechaHora)
   const fechaTexto = fechaHora.toLocaleDateString('es-AR', {
+    timeZone: TZ_ARGENTINA,
     weekday: 'short',
     day: 'numeric',
     month: 'short',
@@ -134,31 +134,45 @@ export default function CitaCardItem({
                 <Send className="w-4 h-4" />
               </button>
             )}
-            {!soloLectura && ['PROGRAMADA', 'CONFIRMADA'].includes(cita.estado) && (
+            {!soloLectura && ['PROGRAMADA', 'CONFIRMADA', 'CANCELADA', 'NO_ASISTIO'].includes(cita.estado) && (
               <>
+                {['PROGRAMADA', 'CONFIRMADA'].includes(cita.estado) && (
+                  <button
+                    type="button"
+                    title="Editar"
+                    className="p-1.5 rounded bg-gray-50 text-gray-700 hover:bg-gray-100 text-xs"
+                    onClick={() => onEdit(cita)}
+                  >
+                    Editar
+                  </button>
+                )}
+                {['PROGRAMADA', 'CONFIRMADA'].includes(cita.estado) && (
+                  <>
+                    <button
+                      type="button"
+                      title="No asistió"
+                      className="p-1.5 rounded bg-orange-50 text-orange-700 hover:bg-orange-100"
+                      onClick={() => onNoAsistio(cita.id)}
+                    >
+                      <UserX className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Cancelar turno (libera el horario)"
+                      className="p-1.5 rounded bg-red-50 text-red-700 hover:bg-red-100"
+                      onClick={() => onCancelar(cita.id)}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </>
+                )}
                 <button
                   type="button"
-                  title="Editar"
-                  className="p-1.5 rounded bg-gray-50 text-gray-700 hover:bg-gray-100 text-xs"
-                  onClick={() => onEdit(cita)}
+                  title="Eliminar turno de la agenda"
+                  className="p-1.5 rounded bg-red-100 text-red-800 hover:bg-red-200 text-xs"
+                  onClick={() => onEliminar(cita.id)}
                 >
-                  Editar
-                </button>
-                <button
-                  type="button"
-                  title="No asistió"
-                  className="p-1.5 rounded bg-orange-50 text-orange-700 hover:bg-orange-100"
-                  onClick={() => onNoAsistio(cita.id)}
-                >
-                  <UserX className="w-4 h-4" />
-                </button>
-                <button
-                  type="button"
-                  title="Cancelar"
-                  className="p-1.5 rounded bg-red-50 text-red-700 hover:bg-red-100"
-                  onClick={() => onCancelar(cita.id)}
-                >
-                  <X className="w-4 h-4" />
+                  Eliminar
                 </button>
               </>
             )}

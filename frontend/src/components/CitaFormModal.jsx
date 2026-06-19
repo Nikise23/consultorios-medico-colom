@@ -11,6 +11,7 @@ import {
   getDisponibilidadAgenda,
 } from '../services/api'
 import { getTipoNotificacion } from '../utils/citaNotificaciones'
+import { formatFechaHora24 } from '../utils/formatFecha'
 import PacienteForm from './PacienteForm'
 
 const DIAS_LABEL = {
@@ -406,13 +407,7 @@ export default function CitaFormModal({ cita, onClose, onSuccess }) {
                   <p className="text-sm text-gray-600 mt-2">
                     Seleccionado:{' '}
                     <span className="font-medium">
-                      {new Date(slotSeleccionado.fechaHora).toLocaleString('es-AR', {
-                        weekday: 'long',
-                        day: 'numeric',
-                        month: 'long',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
+                      {formatFechaHora24(slotSeleccionado.fechaHora)}
                     </span>{' '}
                     ({slotSeleccionado.slotMinutos} min)
                   </p>

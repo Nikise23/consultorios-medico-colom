@@ -165,6 +165,9 @@ export const confirmarCita = (id) =>
 export const cancelarCita = (id) => 
   api.delete(`/citas/${id}`)
 
+export const eliminarCita = (id) =>
+  api.delete(`/citas/${id}/permanente`)
+
 export const marcarCitaNoAsistio = (id) => 
   api.patch(`/citas/${id}/no-asistio`)
 

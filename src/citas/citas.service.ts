@@ -231,6 +231,20 @@ export class CitasService {
     });
   }
 
+  async eliminar(id: number) {
+    const cita = await this.findOne(id);
+    if (cita.estado === EstadoCita.CHECKIN || cita.estado === EstadoCita.COMPLETADA) {
+      throw new BadRequestException('No se puede eliminar: ya tiene check-in');
+    }
+
+    if (cita.googleEventId) {
+      await this.notificaciones.eliminarEventoGoogle(cita.googleEventId);
+    }
+
+    await this.prisma.cita.delete({ where: { id } });
+    return { ok: true, id };
+  }
+
   async marcarNoAsistio(id: number) {
     const cita = await this.findOne(id);
     if (cita.estado === EstadoCita.CHECKIN) {

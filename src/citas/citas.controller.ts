@@ -71,6 +71,12 @@ export class CitasController {
     return this.citasService.marcarNoAsistio(id);
   }
 
+  @Delete(':id/permanente')
+  @Roles(Rol.ADMINISTRADOR)
+  eliminar(@Param('id', ParseIntPipe) id: number) {
+    return this.citasService.eliminar(id);
+  }
+
   @Delete(':id')
   @Roles(Rol.ADMINISTRADOR)
   cancelar(@Param('id', ParseIntPipe) id: number) {

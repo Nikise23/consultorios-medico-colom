@@ -8,6 +8,13 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { EstadoCita } from '@prisma/client';
 import { AgendaService } from '../agenda/agenda.service';
+import {
+  diaSemanaConsultorio,
+  finDelDiaConsultorio,
+  formatFechaConsultorio,
+  inicioDelDiaConsultorio,
+  parseDateTimeConsultorio,
+} from '../common/consultorio-time';
 import { CitasService } from '../citas/citas.service';
 import {
   CitaConRelaciones,
@@ -91,7 +98,7 @@ export class PublicService {
       return { fecha, medicoId, slots: [] as string[] };
     }
 
-    const diaSemana = fechaBase.getDay();
+    const diaSemana = diaSemanaConsultorio(fecha);
     const franjas = await this.agendaService.getFranjasDelDia(
       medicoId,
       diaSemana,
@@ -115,8 +122,8 @@ export class PublicService {
       );
     }
 
-    const inicioDia = this.agendaService.inicioDelDia(fechaBase);
-    const finDia = this.agendaService.finDelDia(fechaBase);
+    const inicioDia = inicioDelDiaConsultorio(fecha);
+    const finDia = finDelDiaConsultorio(fecha);
 
     const citas = await this.prisma.cita.findMany({
       where: {
@@ -128,7 +135,7 @@ export class PublicService {
     });
 
     const candidatos = this.agendaService.generarSlotsCandidatos(
-      fechaBase,
+      fecha,
       franjas,
     );
     const slots: string[] = [];
@@ -137,8 +144,8 @@ export class PublicService {
       if (slot < minimo || slot > maximo) continue;
 
       const franja = franjas.find((f) => {
-        const inicio = this.parseHoraEnDia(fechaBase, f.horaInicio);
-        const fin = this.parseHoraEnDia(fechaBase, f.horaFin);
+        const inicio = parseDateTimeConsultorio(fecha, f.horaInicio);
+        const fin = parseDateTimeConsultorio(fecha, f.horaFin);
         return slot >= inicio && slot < fin;
       });
       const duracion = franja?.slotMinutos ?? 20;
@@ -240,8 +247,14 @@ export class PublicService {
     );
 
     for (const franja of franjas) {
-      const inicio = this.parseHoraEnDia(fechaBase, franja.horaInicio);
-      const fin = this.parseHoraEnDia(fechaBase, franja.horaFin);
+      const inicio = parseDateTimeConsultorio(
+        formatFechaConsultorio(fechaBase),
+        franja.horaInicio,
+      );
+      const fin = parseDateTimeConsultorio(
+        formatFechaConsultorio(fechaBase),
+        franja.horaFin,
+      );
       if (fechaHora >= inicio && fechaHora < fin) {
         return franja.slotMinutos;
       }
@@ -267,18 +280,5 @@ export class PublicService {
       );
     }
     entry.count += 1;
-  }
-
-  private parseHoraEnDia(base: Date, hhmm: string): Date {
-    const [h, m] = hhmm.split(':').map(Number);
-    return new Date(
-      base.getFullYear(),
-      base.getMonth(),
-      base.getDate(),
-      h,
-      m ?? 0,
-      0,
-      0,
-    );
   }
 }

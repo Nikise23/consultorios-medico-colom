@@ -4,6 +4,15 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EstadoCita } from '@prisma/client';
+import {
+  diaSemanaConsultorio,
+  finDelDiaConsultorio,
+  formatFechaConsultorio,
+  formatHoraConsultorio,
+  inicioDelDiaConsultorio,
+  parseDateTimeConsultorio,
+  parseFechaConsultorio,
+} from '../common/consultorio-time';
 import { PrismaService } from '../prisma/prisma.service';
 import { HorarioItemDto } from './dto/set-horarios.dto';
 
@@ -232,7 +241,7 @@ export class AgendaService {
       };
     }
 
-    const diaSemana = fechaBase.getDay();
+    const diaSemana = diaSemanaConsultorio(fecha);
     const franjas = await this.getFranjasDelDia(medicoId, diaSemana);
 
     if (franjas.length === 0) {
@@ -247,8 +256,8 @@ export class AgendaService {
       };
     }
 
-    const inicioDia = this.inicioDelDia(fechaBase);
-    const finDia = this.finDelDia(fechaBase);
+    const inicioDia = inicioDelDiaConsultorio(fecha);
+    const finDia = finDelDiaConsultorio(fecha);
 
     const citas = await this.prisma.cita.findMany({
       where: {
@@ -260,17 +269,17 @@ export class AgendaService {
       select: { fechaHora: true, duracionMinutos: true },
     });
 
-    const candidatos = this.generarSlotsCandidatos(fechaBase, franjas);
+    const candidatos = this.generarSlotsCandidatos(fecha, franjas);
     const ahora = new Date();
 
     const slots: SlotDisponibilidad[] = candidatos.map((slot) => {
-      const franja = this.buscarFranja(slot, fechaBase, franjas);
+      const franja = this.buscarFranja(slot, fecha, franjas);
       const duracion = franja?.slotMinutos ?? 20;
       const ocupado = this.solapaConAlguna(slot, duracion, citas);
       const pasado = slot < ahora;
 
       return {
-        hora: this.formatHora(slot),
+        hora: formatHoraConsultorio(slot),
         fechaHora: slot.toISOString(),
         slotMinutos: duracion,
         disponible: !ocupado && !pasado,
@@ -290,12 +299,12 @@ export class AgendaService {
     };
   }
 
-  generarSlotsCandidatos(fechaBase: Date, franjas: FranjaHoraria[]): Date[] {
+  generarSlotsCandidatos(fecha: string, franjas: FranjaHoraria[]): Date[] {
     const slots: Date[] = [];
 
     for (const franja of franjas) {
-      let cursor = this.parseHoraEnDia(fechaBase, franja.horaInicio);
-      const finFranja = this.parseHoraEnDia(fechaBase, franja.horaFin);
+      let cursor = parseDateTimeConsultorio(fecha, franja.horaInicio);
+      const finFranja = parseDateTimeConsultorio(fecha, franja.horaFin);
 
       while (
         cursor.getTime() + franja.slotMinutos * 60 * 1000 <=
@@ -331,43 +340,19 @@ export class AgendaService {
     if (!y || !m || !d) {
       throw new BadRequestException('Fecha inválida (use YYYY-MM-DD)');
     }
-    return new Date(y, m - 1, d, 12, 0, 0, 0);
+    return parseFechaConsultorio(fecha);
   }
 
   formatFechaLocal(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+    return formatFechaConsultorio(d);
   }
 
   inicioDelDia(d: Date): Date {
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+    return inicioDelDiaConsultorio(formatFechaConsultorio(d));
   }
 
   finDelDia(d: Date): Date {
-    return new Date(
-      d.getFullYear(),
-      d.getMonth(),
-      d.getDate(),
-      23,
-      59,
-      59,
-      999,
-    );
-  }
-
-  private parseHoraEnDia(base: Date, hhmm: string): Date {
-    const [h, m] = hhmm.split(':').map(Number);
-    return new Date(
-      base.getFullYear(),
-      base.getMonth(),
-      base.getDate(),
-      h,
-      m ?? 0,
-      0,
-      0,
-    );
+    return finDelDiaConsultorio(formatFechaConsultorio(d));
   }
 
   private horaMenorQue(inicio: string, fin: string): boolean {
@@ -378,21 +363,15 @@ export class AgendaService {
 
   private buscarFranja(
     slot: Date,
-    fechaBase: Date,
+    fecha: string,
     franjas: FranjaHoraria[],
   ): FranjaHoraria | undefined {
     for (const franja of franjas) {
-      const inicio = this.parseHoraEnDia(fechaBase, franja.horaInicio);
-      const fin = this.parseHoraEnDia(fechaBase, franja.horaFin);
+      const inicio = parseDateTimeConsultorio(fecha, franja.horaInicio);
+      const fin = parseDateTimeConsultorio(fecha, franja.horaFin);
       if (slot >= inicio && slot < fin) return franja;
     }
     return undefined;
-  }
-
-  private formatHora(d: Date): string {
-    const h = String(d.getHours()).padStart(2, '0');
-    const m = String(d.getMinutes()).padStart(2, '0');
-    return `${h}:${m}`;
   }
 
   private formatResumenDias(dias: number[]): string {

@@ -15,6 +15,7 @@ import {
   getMedicos,
   confirmarCita,
   cancelarCita,
+  eliminarCita,
   marcarCitaNoAsistio,
 } from '../services/api'
 import CitaFormModal from '../components/CitaFormModal'
@@ -24,6 +25,7 @@ import CitaCardItem from '../components/CitaCardItem'
 import ResumenDiaAgenda from '../components/ResumenDiaAgenda'
 import { normalizeApiList } from '../utils/normalizeApiList'
 import { calcularResumenDia } from '../utils/citaAgenda'
+import { fechaKeyArgentina } from '../utils/formatFecha'
 
 function startOfWeek(d) {
   const date = new Date(d)
@@ -131,7 +133,7 @@ export default function AgendaCitas() {
       map[key] = []
     }
     citas.forEach((c) => {
-      const key = new Date(c.fechaHora).toISOString().slice(0, 10)
+      const key = fechaKeyArgentina(c.fechaHora)
       if (map[key]) map[key].push(c)
     })
     Object.keys(map).forEach((k) => {
@@ -152,7 +154,16 @@ export default function AgendaCitas() {
   const cancelarMutation = useMutation({
     mutationFn: cancelarCita,
     onSuccess: () => {
-      toast.success('Turno cancelado')
+      toast.success('Turno cancelado — horario liberado')
+      queryClient.invalidateQueries(['citas'])
+    },
+    onError: (e) => toast.error(e.response?.data?.message || 'Error'),
+  })
+
+  const eliminarMutation = useMutation({
+    mutationFn: eliminarCita,
+    onSuccess: () => {
+      toast.success('Turno eliminado')
       queryClient.invalidateQueries(['citas'])
     },
     onError: (e) => toast.error(e.response?.data?.message || 'Error'),
@@ -181,7 +192,7 @@ export default function AgendaCitas() {
     if (!appliedSearch || citas.length === 0) return []
     const map = {}
     citas.forEach((c) => {
-      const key = new Date(c.fechaHora).toISOString().slice(0, 10)
+      const key = fechaKeyArgentina(c.fechaHora)
       if (!map[key]) map[key] = []
       map[key].push(c)
     })
@@ -254,8 +265,17 @@ export default function AgendaCitas() {
       }
     },
     onCancelar: (id) => {
-      if (window.confirm('¿Cancelar este turno?')) {
+      if (window.confirm('¿Cancelar este turno? El horario quedará libre para otro paciente.')) {
         cancelarMutation.mutate(id)
+      }
+    },
+    onEliminar: (id) => {
+      if (
+        window.confirm(
+          '¿Eliminar este turno de la agenda? Se borrará permanentemente y liberará el horario.',
+        )
+      ) {
+        eliminarMutation.mutate(id)
       }
     },
   }

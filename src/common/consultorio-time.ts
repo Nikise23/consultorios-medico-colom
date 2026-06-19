@@ -1,0 +1,43 @@
+/** Horario de consultorio: Argentina (UTC-3, sin horario de verano). */
+export const CONSULTORIO_TZ = 'America/Argentina/Buenos_Aires';
+const OFFSET = '-03:00';
+
+export function parseFechaConsultorio(fecha: string): Date {
+  return new Date(`${fecha}T12:00:00${OFFSET}`);
+}
+
+export function parseDateTimeConsultorio(fecha: string, hhmm: string): Date {
+  const [h, m] = hhmm.split(':');
+  const hora = `${h.padStart(2, '0')}:${String(m ?? 0).padStart(2, '0')}`;
+  return new Date(`${fecha}T${hora}:00${OFFSET}`);
+}
+
+export function formatFechaConsultorio(d: Date): string {
+  return new Intl.DateTimeFormat('sv-SE', {
+    timeZone: CONSULTORIO_TZ,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+}
+
+export function formatHoraConsultorio(d: Date): string {
+  return new Intl.DateTimeFormat('es-AR', {
+    timeZone: CONSULTORIO_TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(d);
+}
+
+export function inicioDelDiaConsultorio(fecha: string): Date {
+  return new Date(`${fecha}T00:00:00${OFFSET}`);
+}
+
+export function finDelDiaConsultorio(fecha: string): Date {
+  return new Date(`${fecha}T23:59:59.999${OFFSET}`);
+}
+
+export function diaSemanaConsultorio(fecha: string): number {
+  return parseFechaConsultorio(fecha).getDay();
+}
