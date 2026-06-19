@@ -9,10 +9,12 @@ services:
     region: oregon
     plan: free
     buildCommand: npm install && npm run prisma:generate && npm run build
-    startCommand: npx prisma migrate deploy && npm run start:prod
+    startCommand: npm run start:prod
     envVars:
       - key: DATABASE_URL
         sync: false  # Debes configurarlo manualmente
+      - key: DIRECT_URL
+        sync: false  # Conexión directa Neon (sin -pooler) para migraciones
       - key: JWT_SECRET
         generateValue: true  # Render generará uno automáticamente
       - key: JWT_EXPIRES_IN

@@ -7,6 +7,7 @@ import {
   X,
   UserX,
   Calendar,
+  User,
 } from 'lucide-react'
 import {
   ESTADO_CITA_LABELS,
@@ -89,6 +90,22 @@ export default function CitaCardItem({
               <Calendar className="w-3 h-3 mr-1" />
               {fechaTexto}
             </p>
+          )}
+          {cita.paciente && (
+            <div className="p-2.5 bg-gray-50 border border-gray-200 rounded-lg text-sm space-y-0.5">
+              <p className="font-semibold text-gray-900 flex items-center gap-1">
+                <User className="w-3.5 h-3.5 text-primary-600 flex-shrink-0" />
+                {cita.paciente.apellido}, {cita.paciente.nombre}
+              </p>
+              {cita.paciente.dni && (
+                <p className="text-xs text-gray-600 pl-5">DNI {cita.paciente.dni}</p>
+              )}
+              {cita.paciente.obraSocial && (
+                <p className="text-xs text-gray-600 pl-5">
+                  Obra social: {cita.paciente.obraSocial}
+                </p>
+              )}
+            </div>
           )}
           <p className="text-xs text-gray-500 flex items-center">
             <Stethoscope className="w-3 h-3 mr-1 flex-shrink-0" />
