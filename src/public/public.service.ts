@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { EstadoCita } from '@prisma/client';
+import { AgendaService } from '../agenda/agenda.service';
 import { CitasService } from '../citas/citas.service';
 import {
   CitaConRelaciones,
@@ -17,20 +18,12 @@ import { PacientesService } from '../pacientes/pacientes.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ReservarTurnoDto } from './dto/reservar-turno.dto';
 
-interface FranjaHoraria {
-  inicio: string;
-  fin: string;
-}
-
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
 @Injectable()
 export class PublicService {
-  private readonly slotMinutos: number;
   private readonly anticipacionMinHoras: number;
   private readonly anticipacionMaxDias: number;
-  private readonly diasAtencion: Set<number>;
-  private readonly franjas: FranjaHoraria[];
   private readonly rateLimitMax: number;
   private readonly rateLimitWindowMs: number;
 
@@ -41,22 +34,13 @@ export class PublicService {
     private citasService: CitasService,
     private prisma: PrismaService,
     private notificaciones: NotificacionesCitaService,
+    private agendaService: AgendaService,
   ) {
-    this.slotMinutos = Number(
-      this.config.get('PUBLIC_TURNOS_SLOT_MINUTOS') ?? 20,
-    );
     this.anticipacionMinHoras = Number(
       this.config.get('PUBLIC_TURNOS_ANTICIPACION_MIN_HORAS') ?? 2,
     );
     this.anticipacionMaxDias = Number(
       this.config.get('PUBLIC_TURNOS_ANTICIPACION_MAX_DIAS') ?? 60,
-    );
-    this.diasAtencion = this.parseDias(
-      this.config.get('PUBLIC_TURNOS_DIAS') ?? '1,2,3,4,5',
-    );
-    this.franjas = this.parseFranjas(
-      this.config.get('PUBLIC_TURNOS_FRANJAS') ??
-        '09:00-13:00,16:00-20:00',
     );
     this.rateLimitMax = Number(
       this.config.get('PUBLIC_TURNOS_RATE_LIMIT_MAX') ?? 5,
@@ -93,9 +77,19 @@ export class PublicService {
       throw new NotFoundException('Profesional no encontrado');
     }
 
-    const fechaBase = this.parseFechaLocal(fecha);
+    const fechaBase = this.agendaService.parseFechaLocal(fecha);
+
+    if (await this.agendaService.estaBloqueado(medicoId, fechaBase)) {
+      return { fecha, medicoId, slots: [] as string[] };
+    }
+
     const diaSemana = fechaBase.getDay();
-    if (!this.diasAtencion.has(diaSemana)) {
+    const franjas = await this.agendaService.getFranjasDelDia(
+      medicoId,
+      diaSemana,
+    );
+
+    if (franjas.length === 0) {
       return { fecha, medicoId, slots: [] as string[] };
     }
 
@@ -107,14 +101,14 @@ export class PublicService {
       ahora.getTime() + this.anticipacionMaxDias * 24 * 60 * 60 * 1000,
     );
 
-    if (fechaBase > this.finDelDia(maximo)) {
+    if (fechaBase > this.agendaService.finDelDia(maximo)) {
       throw new BadRequestException(
         `Solo se pueden reservar turnos hasta ${this.anticipacionMaxDias} días`,
       );
     }
 
-    const inicioDia = this.inicioDelDia(fechaBase);
-    const finDia = this.finDelDia(fechaBase);
+    const inicioDia = this.agendaService.inicioDelDia(fechaBase);
+    const finDia = this.agendaService.finDelDia(fechaBase);
 
     const citas = await this.prisma.cita.findMany({
       where: {
@@ -125,12 +119,27 @@ export class PublicService {
       select: { fechaHora: true, duracionMinutos: true },
     });
 
-    const candidatos = this.generarSlotsCandidatos(fechaBase);
+    const candidatos = this.agendaService.generarSlotsCandidatos(
+      fechaBase,
+      franjas,
+    );
     const slots: string[] = [];
 
     for (const slot of candidatos) {
       if (slot < minimo || slot > maximo) continue;
-      if (this.solapaConAlguna(slot, this.slotMinutos, citas)) continue;
+
+      const franja = franjas.find((f) => {
+        const inicio = this.parseHoraEnDia(fechaBase, f.horaInicio);
+        const fin = this.parseHoraEnDia(fechaBase, f.horaFin);
+        return slot >= inicio && slot < fin;
+      });
+      const duracion = franja?.slotMinutos ?? 20;
+
+      if (
+        this.agendaService.solapaConAlguna(slot, duracion, citas)
+      ) {
+        continue;
+      }
       slots.push(slot.toISOString());
     }
 
@@ -146,7 +155,7 @@ export class PublicService {
     }
 
     const fechaHora = new Date(dto.fechaHora);
-    const fechaStr = this.formatFechaLocal(fechaHora);
+    const fechaStr = this.agendaService.formatFechaLocal(fechaHora);
     const { slots } = await this.disponibilidad(dto.medicoId, fechaStr);
     const slotOk = slots.some((s) => s === fechaHora.toISOString());
     if (!slotOk) {
@@ -175,11 +184,15 @@ export class PublicService {
       });
     }
 
+    const duracion =
+      dto.duracionMinutos ??
+      (await this.getSlotMinutosParaHorario(dto.medicoId, fechaHora));
+
     const cita = await this.citasService.create({
       pacienteId: paciente.id,
       medicoId: dto.medicoId,
       fechaHora: dto.fechaHora,
-      duracionMinutos: dto.duracionMinutos ?? this.slotMinutos,
+      duracionMinutos: duracion,
       motivo: dto.motivo ?? 'Turno online',
       notas: 'Reserva desde sitio web público',
       confirmar: true,
@@ -206,6 +219,29 @@ export class PublicService {
     };
   }
 
+  private async getSlotMinutosParaHorario(
+    medicoId: number,
+    fechaHora: Date,
+  ): Promise<number> {
+    const franjas = await this.agendaService.getFranjasDelDia(
+      medicoId,
+      fechaHora.getDay(),
+    );
+    const fechaBase = this.agendaService.parseFechaLocal(
+      this.agendaService.formatFechaLocal(fechaHora),
+    );
+
+    for (const franja of franjas) {
+      const inicio = this.parseHoraEnDia(fechaBase, franja.horaInicio);
+      const fin = this.parseHoraEnDia(fechaBase, franja.horaFin);
+      if (fechaHora >= inicio && fechaHora < fin) {
+        return franja.slotMinutos;
+      }
+    }
+
+    return 20;
+  }
+
   private checkRateLimit(key: string) {
     const now = Date.now();
     const entry = rateLimitStore.get(key);
@@ -225,48 +261,6 @@ export class PublicService {
     entry.count += 1;
   }
 
-  private parseDias(raw: string): Set<number> {
-    return new Set(
-      raw.split(',').map((d) => {
-        const n = Number(d.trim());
-        return n === 7 ? 0 : n;
-      }),
-    );
-  }
-
-  private parseFranjas(raw: string): FranjaHoraria[] {
-    return raw.split(',').map((part) => {
-      const [inicio, fin] = part.trim().split('-');
-      if (!inicio || !fin) {
-        throw new Error('PUBLIC_TURNOS_FRANJAS inválido');
-      }
-      return { inicio: inicio.trim(), fin: fin.trim() };
-    });
-  }
-
-  private parseFechaLocal(fecha: string): Date {
-    const [y, m, d] = fecha.split('-').map(Number);
-    if (!y || !m || !d) {
-      throw new BadRequestException('Fecha inválida (use YYYY-MM-DD)');
-    }
-    return new Date(y, m - 1, d, 12, 0, 0, 0);
-  }
-
-  private formatFechaLocal(d: Date): string {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
-  }
-
-  private inicioDelDia(d: Date): Date {
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-  }
-
-  private finDelDia(d: Date): Date {
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
-  }
-
   private parseHoraEnDia(base: Date, hhmm: string): Date {
     const [h, m] = hhmm.split(':').map(Number);
     return new Date(
@@ -278,36 +272,5 @@ export class PublicService {
       0,
       0,
     );
-  }
-
-  private generarSlotsCandidatos(fechaBase: Date): Date[] {
-    const slots: Date[] = [];
-    for (const franja of this.franjas) {
-      let cursor = this.parseHoraEnDia(fechaBase, franja.inicio);
-      const finFranja = this.parseHoraEnDia(fechaBase, franja.fin);
-      while (
-        cursor.getTime() + this.slotMinutos * 60 * 1000 <=
-        finFranja.getTime()
-      ) {
-        slots.push(new Date(cursor));
-        cursor = new Date(cursor.getTime() + this.slotMinutos * 60 * 1000);
-      }
-    }
-    return slots;
-  }
-
-  private solapaConAlguna(
-    inicio: Date,
-    duracionMinutos: number,
-    citas: { fechaHora: Date; duracionMinutos: number }[],
-  ): boolean {
-    const fin = new Date(inicio.getTime() + duracionMinutos * 60 * 1000);
-    for (const c of citas) {
-      const finOtra = new Date(
-        c.fechaHora.getTime() + c.duracionMinutos * 60 * 1000,
-      );
-      if (inicio < finOtra && fin > c.fechaHora) return true;
-    }
-    return false;
   }
 }

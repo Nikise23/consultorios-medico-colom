@@ -9,7 +9,7 @@ services:
     region: oregon
     plan: free
     buildCommand: npm install && npm run prisma:generate && npm run build
-    startCommand: npm run start:prod
+    startCommand: npx prisma migrate deploy && npm run start:prod
     envVars:
       - key: DATABASE_URL
         sync: false  # Debes configurarlo manualmente

@@ -71,8 +71,41 @@ model Medico {
   atenciones Atencion[]
   historias  HistoriaClinica[]
   citas      Cita[]
+  horarios   HorarioMedico[]
+  bloqueos   BloqueoAgenda[]
 
   @@map("medicos")
+}
+
+model HorarioMedico {
+  id          Int      @id @default(autoincrement())
+  medicoId    Int
+  diaSemana   Int      // 0=domingo … 6=sábado
+  horaInicio  String   // HH:mm
+  horaFin     String   // HH:mm
+  slotMinutos Int      @default(20)
+  activo      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  medico Medico @relation(fields: [medicoId], references: [id], onDelete: Cascade)
+
+  @@index([medicoId, diaSemana])
+  @@map("horarios_medico")
+}
+
+model BloqueoAgenda {
+  id        Int      @id @default(autoincrement())
+  medicoId  Int
+  fecha     DateTime @db.Date
+  motivo    String?
+  createdAt DateTime @default(now())
+
+  medico Medico @relation(fields: [medicoId], references: [id], onDelete: Cascade)
+
+  @@unique([medicoId, fecha])
+  @@index([medicoId, fecha])
+  @@map("bloqueos_agenda")
 }
 
 model Paciente {

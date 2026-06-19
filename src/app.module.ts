@@ -9,6 +9,7 @@ import { PagosModule } from './pagos/pagos.module';
 import { MedicosModule } from './medicos/medicos.module';
 import { CitasModule } from './citas/citas.module';
 import { PublicModule } from './public/public.module';
+import { AgendaModule } from './agenda/agenda.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AppController } from './app.controller';
 
@@ -27,6 +28,7 @@ import { AppController } from './app.controller';
     MedicosModule,
     CitasModule,
     PublicModule,
+    AgendaModule,
   ],
   controllers: [AppController],
 })

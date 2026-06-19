@@ -81,6 +81,7 @@ async function bootstrap() {
         '/medicos',
         '/pagos',
         '/citas',
+        '/agenda',
         '/public',
         '/health'
       ];

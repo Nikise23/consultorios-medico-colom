@@ -173,3 +173,16 @@ export const getCitasHoy = (medicoId) => {
   return api.get('/citas/hoy', { params })
 }
 
+// Agenda — horarios y bloqueos por médico
+export const getAgendaMedico = (medicoId) =>
+  api.get(`/agenda/medicos/${medicoId}`)
+
+export const setHorariosMedico = (medicoId, data) =>
+  api.put(`/agenda/medicos/${medicoId}/horarios`, data)
+
+export const agregarBloqueoAgenda = (medicoId, data) =>
+  api.post(`/agenda/medicos/${medicoId}/bloqueos`, data)
+
+export const eliminarBloqueoAgenda = (medicoId, fecha) =>
+  api.delete(`/agenda/medicos/${medicoId}/bloqueos/${fecha}`)
+

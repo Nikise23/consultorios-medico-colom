@@ -18,6 +18,7 @@ import {
   marcarCitaNoAsistio,
 } from '../services/api'
 import CitaFormModal from '../components/CitaFormModal'
+import ConfigAgendaMedico from '../components/ConfigAgendaMedico'
 import EnviarAEsperaConPago from '../components/EnviarAEsperaConPago'
 import CitaCardItem from '../components/CitaCardItem'
 import { normalizeApiList } from '../utils/normalizeApiList'
@@ -258,6 +259,8 @@ export default function AgendaCitas() {
           </button>
         )}
       </div>
+
+      {!soloLectura && <ConfigAgendaMedico medicos={medicos} />}
 
       {/* Búsqueda de turnos */}
       <div className="card mb-6">
