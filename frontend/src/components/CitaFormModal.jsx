@@ -1,30 +1,52 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { X, Calendar, Mail, AlertCircle } from 'lucide-react'
+import { X, Mail, AlertCircle, Clock } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { createCita, updateCita, searchPacientes, getMedicos } from '../services/api'
+import {
+  createCita,
+  updateCita,
+  searchPacientes,
+  getMedicos,
+  getAgendaMedico,
+  getDisponibilidadAgenda,
+} from '../services/api'
 import { getTipoNotificacion } from '../utils/citaNotificaciones'
 import PacienteForm from './PacienteForm'
+
+const DIAS_LABEL = {
+  0: 'domingo',
+  1: 'lunes',
+  2: 'martes',
+  3: 'miércoles',
+  4: 'jueves',
+  5: 'viernes',
+  6: 'sábado',
+}
+
+function toDateInputValue(date = new Date()) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
+function formatDiasAtencion(dias) {
+  if (!dias?.length) return ''
+  return dias.map((d) => DIAS_LABEL[d] ?? d).join(', ')
+}
 
 export default function CitaFormModal({ cita, onClose, onSuccess }) {
   const isEdit = !!cita
   const [showNuevoPaciente, setShowNuevoPaciente] = useState(false)
   const [pacienteSeleccionado, setPacienteSeleccionado] = useState(cita?.paciente || null)
   const [busquedaDni, setBusquedaDni] = useState('')
-
-  const defaultFecha = () => {
-    const d = new Date()
-    d.setDate(d.getDate() + 1)
-    d.setMinutes(0, 0, 0)
-    return d.toISOString().slice(0, 16)
-  }
+  const [fechaSeleccionada, setFechaSeleccionada] = useState(() =>
+    cita?.fechaHora ? toDateInputValue(new Date(cita.fechaHora)) : toDateInputValue(),
+  )
+  const [slotSeleccionado, setSlotSeleccionado] = useState(null)
 
   const [form, setForm] = useState({
     medicoId: cita?.medicoId?.toString() || '',
-    fechaHora: cita?.fechaHora
-      ? new Date(cita.fechaHora).toISOString().slice(0, 16)
-      : defaultFecha(),
-    duracionMinutos: cita?.duracionMinutos?.toString() || '20',
     motivo: cita?.motivo || '',
     notas: cita?.notas || '',
     confirmar: true,
@@ -35,6 +57,34 @@ export default function CitaFormModal({ cita, onClose, onSuccess }) {
     queryFn: () => getMedicos(),
   })
   const medicos = medicosData?.data || []
+
+  const { data: agendaData, isLoading: loadingAgenda } = useQuery({
+    queryKey: ['agenda', form.medicoId, 'config'],
+    queryFn: () => getAgendaMedico(form.medicoId),
+    enabled: !!form.medicoId,
+  })
+
+  const agenda = agendaData?.data || agendaData
+  const horariosActivos = useMemo(
+    () => (agenda?.horarios || []).filter((h) => h.activo),
+    [agenda],
+  )
+  const sinHorarios = !!form.medicoId && !loadingAgenda && horariosActivos.length === 0
+
+  const diasAtencion = useMemo(
+    () => [...new Set(horariosActivos.map((h) => h.diaSemana))].sort((a, b) => a - b),
+    [horariosActivos],
+  )
+
+  const { data: dispData, isLoading: loadingSlots } = useQuery({
+    queryKey: ['agenda', form.medicoId, 'disp', fechaSeleccionada, cita?.id],
+    queryFn: () =>
+      getDisponibilidadAgenda(form.medicoId, fechaSeleccionada, cita?.id),
+    enabled: !!form.medicoId && !!fechaSeleccionada && !sinHorarios,
+  })
+
+  const disponibilidad = dispData?.data || dispData
+  const slots = disponibilidad?.slots || []
 
   const { data: pacientesBusqueda } = useQuery({
     queryKey: ['pacientes', 'dni-cita', busquedaDni],
@@ -49,18 +99,23 @@ export default function CitaFormModal({ cita, onClose, onSuccess }) {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!pacienteSeleccionado?.id) {
+      if (!pacienteSeleccionado?.id && !isEdit) {
         throw new Error('Seleccioná un paciente')
       }
+      if (!slotSeleccionado?.disponible) {
+        throw new Error('Seleccioná un horario disponible')
+      }
+
       const payload = {
-        pacienteId: pacienteSeleccionado.id,
+        pacienteId: isEdit ? cita.pacienteId : pacienteSeleccionado.id,
         medicoId: parseInt(form.medicoId, 10),
-        fechaHora: new Date(form.fechaHora).toISOString(),
-        duracionMinutos: parseInt(form.duracionMinutos, 10) || 20,
+        fechaHora: slotSeleccionado.fechaHora,
+        duracionMinutos: slotSeleccionado.slotMinutos,
         motivo: form.motivo || undefined,
         notas: form.notas || undefined,
         confirmar: form.confirmar,
       }
+
       if (isEdit) {
         return updateCita(cita.id, {
           medicoId: payload.medicoId,
@@ -84,6 +139,70 @@ export default function CitaFormModal({ cita, onClose, onSuccess }) {
   useEffect(() => {
     if (cita?.paciente) setPacienteSeleccionado(cita.paciente)
   }, [cita])
+
+  useEffect(() => {
+    if (!slots.length) return
+
+    if (cita?.fechaHora) {
+      const citaTime = new Date(cita.fechaHora).getTime()
+      const match = slots.find(
+        (s) => new Date(s.fechaHora).getTime() === citaTime,
+      )
+      if (match) {
+        setSlotSeleccionado(match)
+        return
+      }
+    }
+
+    if (!slotSeleccionado) {
+      const first = slots.find((s) => s.disponible)
+      if (first) setSlotSeleccionado(first)
+    }
+  }, [slots, cita?.fechaHora])
+
+  const handleMedicoChange = (medicoId) => {
+    setForm((prev) => ({ ...prev, medicoId }))
+    setFechaSeleccionada(toDateInputValue())
+    setSlotSeleccionado(null)
+  }
+
+  const mensajeHorarios = () => {
+    if (!form.medicoId || loadingAgenda) return null
+    if (sinHorarios) {
+      return (
+        <div className="p-3 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-sm">
+          <AlertCircle className="w-4 h-4 inline mr-1" />
+          Este médico no tiene días y horarios designados. Configuralos en la sección
+          &quot;Horarios y bloqueos por profesional&quot; de la agenda.
+        </div>
+      )
+    }
+    return (
+      <p className="text-sm text-gray-600">
+        Atiende: <span className="font-medium capitalize">{formatDiasAtencion(diasAtencion)}</span>
+      </p>
+    )
+  }
+
+  const mensajeFecha = () => {
+    if (!disponibilidad || loadingSlots) return null
+    if (disponibilidad.bloqueado) {
+      return (
+        <p className="text-sm text-red-600">
+          Este día está bloqueado y el médico no atiende.
+        </p>
+      )
+    }
+    if (!disponibilidad.diaAtiende) {
+      return (
+        <p className="text-sm text-amber-700">
+          El médico no atiende este día. Elegí un{' '}
+          <span className="capitalize">{formatDiasAtencion(diasAtencion)}</span>.
+        </p>
+      )
+    }
+    return null
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -180,7 +299,7 @@ export default function CitaFormModal({ cita, onClose, onSuccess }) {
             <select
               className="input w-full"
               value={form.medicoId}
-              onChange={(e) => setForm({ ...form, medicoId: e.target.value })}
+              onChange={(e) => handleMedicoChange(e.target.value)}
               required
               disabled={isEdit && cita?.estado === 'CHECKIN'}
             >
@@ -192,31 +311,115 @@ export default function CitaFormModal({ cita, onClose, onSuccess }) {
                 </option>
               ))}
             </select>
+            {form.medicoId && <div className="mt-2">{mensajeHorarios()}</div>}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Fecha y hora *</label>
-              <input
-                type="datetime-local"
-                className="input w-full"
-                value={form.fechaHora}
-                onChange={(e) => setForm({ ...form, fechaHora: e.target.value })}
-                required
-              />
+          {form.medicoId && !sinHorarios && (
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha *</label>
+                <input
+                  type="date"
+                  className="input w-full"
+                  value={fechaSeleccionada}
+                  min={toDateInputValue()}
+                  onChange={(e) => {
+                    setFechaSeleccionada(e.target.value)
+                    setSlotSeleccionado(null)
+                  }}
+                  required
+                />
+                {mensajeFecha()}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-1">
+                  <Clock className="w-4 h-4" />
+                  Horario *
+                </label>
+
+                <div className="flex flex-wrap gap-3 text-xs text-gray-600 mb-2">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-3 h-3 rounded bg-green-100 border border-green-500" />
+                    Disponible
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-3 h-3 rounded bg-red-100 border border-red-400" />
+                    Ocupado
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="w-3 h-3 rounded bg-gray-100 border border-gray-300" />
+                    Pasado
+                  </span>
+                </div>
+
+                {loadingSlots ? (
+                  <div className="py-6 text-center">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto" />
+                  </div>
+                ) : slots.length === 0 ? (
+                  <p className="text-sm text-gray-500 py-4 text-center border rounded-lg">
+                    {disponibilidad?.bloqueado || !disponibilidad?.diaAtiende
+                      ? 'No hay horarios para esta fecha'
+                      : 'No hay turnos disponibles este día'}
+                  </p>
+                ) : (
+                  <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 border rounded-lg bg-gray-50">
+                    {slots.map((slot) => {
+                      const selected = slotSeleccionado?.fechaHora === slot.fechaHora
+                      let classes =
+                        'px-3 py-2 rounded-lg text-sm font-medium border transition'
+
+                      if (slot.disponible) {
+                        classes += selected
+                          ? ' bg-green-600 text-white border-green-700 ring-2 ring-green-300'
+                          : ' bg-green-100 text-green-800 border-green-500 hover:bg-green-200'
+                      } else if (slot.ocupado) {
+                        classes += ' bg-red-100 text-red-700 border-red-300 cursor-not-allowed opacity-80'
+                      } else {
+                        classes += ' bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed'
+                      }
+
+                      return (
+                        <button
+                          key={slot.fechaHora}
+                          type="button"
+                          disabled={!slot.disponible}
+                          className={classes}
+                          onClick={() => setSlotSeleccionado(slot)}
+                          title={
+                            slot.disponible
+                              ? `Disponible (${slot.slotMinutos} min)`
+                              : slot.ocupado
+                                ? 'Ocupado'
+                                : 'Horario pasado'
+                          }
+                        >
+                          {slot.hora}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {slotSeleccionado?.disponible && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    Seleccionado:{' '}
+                    <span className="font-medium">
+                      {new Date(slotSeleccionado.fechaHora).toLocaleString('es-AR', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                      })}
+                    </span>{' '}
+                    ({slotSeleccionado.slotMinutos} min)
+                  </p>
+                )}
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Duración (min)</label>
-              <input
-                type="number"
-                min={5}
-                max={480}
-                className="input w-full"
-                value={form.duracionMinutos}
-                onChange={(e) => setForm({ ...form, duracionMinutos: e.target.value })}
-              />
-            </div>
-          </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Motivo</label>
@@ -255,7 +458,11 @@ export default function CitaFormModal({ cita, onClose, onSuccess }) {
             </button>
             <button
               type="submit"
-              disabled={mutation.isPending}
+              disabled={
+                mutation.isPending ||
+                sinHorarios ||
+                !slotSeleccionado?.disponible
+              }
               className="btn btn-primary"
             >
               {mutation.isPending ? 'Guardando...' : isEdit ? 'Guardar cambios' : 'Agendar turno'}

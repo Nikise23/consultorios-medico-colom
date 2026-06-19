@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -22,6 +23,23 @@ import { SetHorariosDto } from './dto/set-horarios.dto';
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AgendaController {
   constructor(private readonly agendaService: AgendaService) {}
+
+  @Get('medicos/:medicoId/disponibilidad')
+  @Roles(Rol.ADMINISTRADOR)
+  getDisponibilidad(
+    @Param('medicoId', ParseIntPipe) medicoId: number,
+    @Query('fecha') fecha: string,
+    @Query('excluirCitaId') excluirCitaId?: string,
+  ) {
+    if (!fecha) {
+      throw new BadRequestException('El parámetro fecha es requerido (YYYY-MM-DD)');
+    }
+    return this.agendaService.getDisponibilidad(
+      medicoId,
+      fecha,
+      excluirCitaId ? +excluirCitaId : undefined,
+    );
+  }
 
   @Get('medicos/:medicoId')
   @Roles(Rol.ADMINISTRADOR)

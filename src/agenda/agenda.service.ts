@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { EstadoCita } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { HorarioItemDto } from './dto/set-horarios.dto';
 
@@ -10,6 +11,15 @@ export interface FranjaHoraria {
   horaInicio: string;
   horaFin: string;
   slotMinutos: number;
+}
+
+export interface SlotDisponibilidad {
+  hora: string;
+  fechaHora: string;
+  slotMinutos: number;
+  disponible: boolean;
+  ocupado: boolean;
+  pasado: boolean;
 }
 
 @Injectable()
@@ -140,6 +150,106 @@ export class AgendaService {
     }));
   }
 
+  async getDisponibilidad(
+    medicoId: number,
+    fecha: string,
+    excluirCitaId?: number,
+  ) {
+    await this.assertMedico(medicoId);
+
+    const horariosActivos = await this.prisma.horarioMedico.findMany({
+      where: { medicoId, activo: true },
+    });
+
+    const diasAtencion = [
+      ...new Set(horariosActivos.map((h) => h.diaSemana)),
+    ].sort((a, b) => a - b);
+
+    if (horariosActivos.length === 0) {
+      return {
+        fecha,
+        medicoId,
+        sinHorarios: true,
+        diasAtencion,
+        bloqueado: false,
+        diaAtiende: false,
+        slots: [] as SlotDisponibilidad[],
+      };
+    }
+
+    const fechaBase = this.parseFechaLocal(fecha);
+    const bloqueado = await this.estaBloqueado(medicoId, fechaBase);
+
+    if (bloqueado) {
+      return {
+        fecha,
+        medicoId,
+        sinHorarios: false,
+        diasAtencion,
+        bloqueado: true,
+        diaAtiende: false,
+        slots: [] as SlotDisponibilidad[],
+      };
+    }
+
+    const diaSemana = fechaBase.getDay();
+    const franjas = await this.getFranjasDelDia(medicoId, diaSemana);
+
+    if (franjas.length === 0) {
+      return {
+        fecha,
+        medicoId,
+        sinHorarios: false,
+        diasAtencion,
+        bloqueado: false,
+        diaAtiende: false,
+        slots: [] as SlotDisponibilidad[],
+      };
+    }
+
+    const inicioDia = this.inicioDelDia(fechaBase);
+    const finDia = this.finDelDia(fechaBase);
+
+    const citas = await this.prisma.cita.findMany({
+      where: {
+        medicoId,
+        estado: { notIn: [EstadoCita.CANCELADA] },
+        fechaHora: { gte: inicioDia, lte: finDia },
+        ...(excluirCitaId ? { id: { not: excluirCitaId } } : {}),
+      },
+      select: { fechaHora: true, duracionMinutos: true },
+    });
+
+    const candidatos = this.generarSlotsCandidatos(fechaBase, franjas);
+    const ahora = new Date();
+
+    const slots: SlotDisponibilidad[] = candidatos.map((slot) => {
+      const franja = this.buscarFranja(slot, fechaBase, franjas);
+      const duracion = franja?.slotMinutos ?? 20;
+      const ocupado = this.solapaConAlguna(slot, duracion, citas);
+      const pasado = slot < ahora;
+
+      return {
+        hora: this.formatHora(slot),
+        fechaHora: slot.toISOString(),
+        slotMinutos: duracion,
+        disponible: !ocupado && !pasado,
+        ocupado,
+        pasado,
+      };
+    });
+
+    return {
+      fecha,
+      medicoId,
+      sinHorarios: false,
+      diasAtencion,
+      bloqueado: false,
+      diaAtiende: true,
+      slots,
+    };
+  }
+
   generarSlotsCandidatos(fechaBase: Date, franjas: FranjaHoraria[]): Date[] {
     const slots: Date[] = [];
 
@@ -224,6 +334,25 @@ export class AgendaService {
     const [hi, mi] = inicio.split(':').map(Number);
     const [hf, mf] = fin.split(':').map(Number);
     return hi * 60 + mi < hf * 60 + mf;
+  }
+
+  private buscarFranja(
+    slot: Date,
+    fechaBase: Date,
+    franjas: FranjaHoraria[],
+  ): FranjaHoraria | undefined {
+    for (const franja of franjas) {
+      const inicio = this.parseHoraEnDia(fechaBase, franja.horaInicio);
+      const fin = this.parseHoraEnDia(fechaBase, franja.horaFin);
+      if (slot >= inicio && slot < fin) return franja;
+    }
+    return undefined;
+  }
+
+  private formatHora(d: Date): string {
+    const h = String(d.getHours()).padStart(2, '0');
+    const m = String(d.getMinutes()).padStart(2, '0');
+    return `${h}:${m}`;
   }
 
   private async assertMedico(medicoId: number) {

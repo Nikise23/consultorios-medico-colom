@@ -177,6 +177,12 @@ export const getCitasHoy = (medicoId) => {
 export const getAgendaMedico = (medicoId) =>
   api.get(`/agenda/medicos/${medicoId}`)
 
+export const getDisponibilidadAgenda = (medicoId, fecha, excluirCitaId) => {
+  const params = { fecha }
+  if (excluirCitaId) params.excluirCitaId = excluirCitaId
+  return api.get(`/agenda/medicos/${medicoId}/disponibilidad`, { params })
+}
+
 export const setHorariosMedico = (medicoId, data) =>
   api.put(`/agenda/medicos/${medicoId}/horarios`, data)
 
