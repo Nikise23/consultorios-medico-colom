@@ -30,6 +30,18 @@ export function formatHoraConsultorio(d: Date): string {
   }).format(d);
 }
 
+/** Fecha completa + hora 24h (emails y notificaciones al paciente). */
+export function formatFechaHoraEmailConsultorio(d: Date): string {
+  const fecha = new Intl.DateTimeFormat('es-AR', {
+    timeZone: CONSULTORIO_TZ,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  }).format(d);
+  return `${fecha}, ${formatHoraConsultorio(d)}`;
+}
+
 export function inicioDelDiaConsultorio(fecha: string): Date {
   return new Date(`${fecha}T00:00:00${OFFSET}`);
 }

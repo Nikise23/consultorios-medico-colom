@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { formatFechaHoraEmailConsultorio } from '../common/consultorio-time';
 
 export interface CitaConRelaciones {
   id: number;
@@ -62,11 +63,7 @@ export class NotificacionesCitaService {
     }
 
     const medicoNombre = `Dr. ${cita.medico.usuario.nombre} ${cita.medico.usuario.apellido}`;
-    const fecha = new Date(cita.fechaHora).toLocaleString('es-AR', {
-      timeZone: this.timeZone,
-      dateStyle: 'full',
-      timeStyle: 'short',
-    });
+    const fecha = formatFechaHoraEmailConsultorio(new Date(cita.fechaHora));
     const calendario = this.buildCalendarioData(cita, medicoNombre);
 
     emailEnviado = await this.enviarEmail({
