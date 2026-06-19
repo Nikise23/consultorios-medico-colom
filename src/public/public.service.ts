@@ -71,6 +71,14 @@ export class PublicService {
     return [...set].sort((a, b) => a.localeCompare(b, 'es'));
   }
 
+  async horarios(medicoId: number) {
+    const medico = await this.medicosService.findOne(medicoId);
+    if (!medico || !medico.activo) {
+      throw new NotFoundException('Profesional no encontrado');
+    }
+    return this.agendaService.getHorariosPublicos(medicoId);
+  }
+
   async disponibilidad(medicoId: number, fecha: string) {
     const medico = await this.medicosService.findOne(medicoId);
     if (!medico || !medico.activo) {

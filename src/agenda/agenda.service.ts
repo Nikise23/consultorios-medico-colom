@@ -22,6 +22,16 @@ export interface SlotDisponibilidad {
   pasado: boolean;
 }
 
+const DIAS_NOMBRE = [
+  'domingo',
+  'lunes',
+  'martes',
+  'miércoles',
+  'jueves',
+  'viernes',
+  'sábado',
+];
+
 @Injectable()
 export class AgendaService {
   constructor(private prisma: PrismaService) {}
@@ -41,6 +51,36 @@ export class AgendaService {
     ]);
 
     return { medicoId, horarios, bloqueos };
+  }
+
+  async getHorariosPublicos(medicoId: number) {
+    await this.assertMedico(medicoId);
+
+    const horarios = await this.prisma.horarioMedico.findMany({
+      where: { medicoId, activo: true },
+      orderBy: [{ diaSemana: 'asc' }, { horaInicio: 'asc' }],
+    });
+
+    const sinHorarios = horarios.length === 0;
+    const diasSemana = [
+      ...new Set(horarios.map((h) => h.diaSemana)),
+    ].sort((a, b) => a - b);
+
+    const franjas = horarios.map((h) => ({
+      diaSemana: h.diaSemana,
+      dia: DIAS_NOMBRE[h.diaSemana],
+      horaInicio: h.horaInicio,
+      horaFin: h.horaFin,
+      slotMinutos: h.slotMinutos,
+    }));
+
+    return {
+      medicoId,
+      sinHorarios,
+      diasSemana,
+      resumenDias: sinHorarios ? '' : this.formatResumenDias(diasSemana),
+      franjas,
+    };
   }
 
   async setHorarios(medicoId: number, horarios: HorarioItemDto[]) {
@@ -353,6 +393,14 @@ export class AgendaService {
     const h = String(d.getHours()).padStart(2, '0');
     const m = String(d.getMinutes()).padStart(2, '0');
     return `${h}:${m}`;
+  }
+
+  private formatResumenDias(dias: number[]): string {
+    const nombres = dias.map((d) => DIAS_NOMBRE[d] ?? String(d));
+    if (nombres.length === 0) return '';
+    if (nombres.length === 1) return nombres[0];
+    if (nombres.length === 2) return `${nombres[0]} y ${nombres[1]}`;
+    return `${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}`;
   }
 
   private async assertMedico(medicoId: number) {

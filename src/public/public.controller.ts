@@ -29,6 +29,11 @@ export class PublicController {
     return this.publicService.listarEspecialidades();
   }
 
+  @Get('medicos/:id/horarios')
+  horarios(@Param('id', ParseIntPipe) id: number) {
+    return this.publicService.horarios(id);
+  }
+
   @Get('medicos/:id/disponibilidad')
   disponibilidad(
     @Param('id', ParseIntPipe) id: number,
