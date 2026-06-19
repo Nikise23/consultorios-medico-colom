@@ -21,7 +21,9 @@ import CitaFormModal from '../components/CitaFormModal'
 import ConfigAgendaMedico from '../components/ConfigAgendaMedico'
 import EnviarAEsperaConPago from '../components/EnviarAEsperaConPago'
 import CitaCardItem from '../components/CitaCardItem'
+import ResumenDiaAgenda from '../components/ResumenDiaAgenda'
 import { normalizeApiList } from '../utils/normalizeApiList'
+import { calcularResumenDia } from '../utils/citaAgenda'
 
 function startOfWeek(d) {
   const date = new Date(d)
@@ -168,13 +170,38 @@ export default function AgendaCitas() {
   const puedeCheckin = (c) =>
     ['PROGRAMADA', 'CONFIRMADA'].includes(c.estado) && !c.atencionId
 
-  const esHoyOPasado = (fechaHora) => {
-    const hoy = new Date()
-    hoy.setHours(0, 0, 0, 0)
-    const f = new Date(fechaHora)
-    f.setHours(0, 0, 0, 0)
-    return f <= hoy
-  }
+  const medicoFiltradoNombre = useMemo(() => {
+    if (!medicoFiltro) return null
+    const m = medicos.find((x) => String(x.id) === String(medicoFiltro))
+    if (!m) return null
+    return `Dr. ${m.usuario?.nombre} ${m.usuario?.apellido}`
+  }, [medicoFiltro, medicos])
+
+  const resumenBusquedaPorDia = useMemo(() => {
+    if (!appliedSearch || citas.length === 0) return []
+    const map = {}
+    citas.forEach((c) => {
+      const key = new Date(c.fechaHora).toISOString().slice(0, 10)
+      if (!map[key]) map[key] = []
+      map[key].push(c)
+    })
+    return Object.entries(map)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([dia, citasDia]) => ({
+        dia,
+        citasDia,
+        resumen: calcularResumenDia(citasDia),
+      }))
+      .filter(({ resumen }) => resumen.total > 0)
+  }, [appliedSearch, citas])
+
+  const medicoBusquedaNombre = useMemo(() => {
+    const id = appliedSearch?.medicoId
+    if (!id) return null
+    const m = medicos.find((x) => String(x.id) === String(id))
+    if (!m) return null
+    return `Dr. ${m.usuario?.nombre} ${m.usuario?.apellido}`
+  }, [appliedSearch, medicos])
 
   const refresh = () => {
     queryClient.invalidateQueries(['citas'])
@@ -428,7 +455,30 @@ export default function AgendaCitas() {
             <p>No se encontraron turnos con esos criterios</p>
           </div>
         ) : (
-          <ul className="space-y-1.5 max-w-3xl">
+          <>
+            {resumenBusquedaPorDia.length > 0 && (
+              <div className="card mb-4 space-y-3">
+                <h3 className="text-sm font-semibold text-gray-900">
+                  Pacientes previstos por día
+                </h3>
+                {resumenBusquedaPorDia.map(({ dia, citasDia }) => (
+                  <div key={dia}>
+                    <p className="text-xs font-medium text-gray-600 mb-1 capitalize">
+                      {new Date(dia + 'T12:00:00').toLocaleDateString('es-AR', {
+                        weekday: 'long',
+                        day: 'numeric',
+                        month: 'long',
+                      })}
+                    </p>
+                    <ResumenDiaAgenda
+                      citasDia={citasDia}
+                      medicoNombre={medicoBusquedaNombre}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            <ul className="space-y-1.5 max-w-3xl">
             {citas.map((c) => (
               <CitaCardItem
                 key={c.id}
@@ -437,12 +487,12 @@ export default function AgendaCitas() {
                 onToggle={() => toggleExpanded(c.id)}
                 soloLectura={soloLectura}
                 puedeCheckin={puedeCheckin}
-                esHoyOPasado={esHoyOPasado}
                 mostrarFecha
                 {...citaHandlers}
               />
             ))}
-          </ul>
+            </ul>
+          </>
         )
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -466,6 +516,10 @@ export default function AgendaCitas() {
                     </span>
                   )}
                 </h3>
+                <ResumenDiaAgenda
+                  citasDia={citasDia}
+                  medicoNombre={medicoFiltradoNombre}
+                />
                 {citasDia.length === 0 ? (
                   <p className="text-sm text-gray-400 py-4 text-center">Sin turnos</p>
                 ) : (
@@ -478,7 +532,6 @@ export default function AgendaCitas() {
                         onToggle={() => toggleExpanded(c.id)}
                         soloLectura={soloLectura}
                         puedeCheckin={puedeCheckin}
-                        esHoyOPasado={esHoyOPasado}
                         {...citaHandlers}
                       />
                     ))}

@@ -13,6 +13,7 @@ import {
   ESTADO_CITA_COLORS,
   getTipoNotificacion,
 } from '../utils/citaNotificaciones'
+import { puedeEnviarEsperaAhora, horaDisponibleCheckin, MINUTOS_ANTES_CHECKIN } from '../utils/citaAgenda'
 
 export default function CitaCardItem({
   cita,
@@ -20,7 +21,6 @@ export default function CitaCardItem({
   onToggle,
   soloLectura,
   puedeCheckin,
-  esHoyOPasado,
   onConfirmar,
   onCheckin,
   onEdit,
@@ -30,6 +30,10 @@ export default function CitaCardItem({
 }) {
   const notif = getTipoNotificacion(cita.paciente?.email)
   const fechaHora = new Date(cita.fechaHora)
+  const checkinDisponible =
+    puedeCheckin(cita) && puedeEnviarEsperaAhora(cita.fechaHora)
+  const checkinPendiente =
+    puedeCheckin(cita) && !puedeEnviarEsperaAhora(cita.fechaHora)
   const hora = fechaHora.toLocaleTimeString('es-AR', {
     hour: '2-digit',
     minute: '2-digit',
@@ -105,7 +109,7 @@ export default function CitaCardItem({
                 <Check className="w-4 h-4" />
               </button>
             )}
-            {!soloLectura && puedeCheckin(cita) && esHoyOPasado(cita.fechaHora) && (
+            {!soloLectura && checkinDisponible && (
               <button
                 type="button"
                 title="Enviar a sala de espera"
@@ -114,6 +118,14 @@ export default function CitaCardItem({
               >
                 <Send className="w-4 h-4" />
               </button>
+            )}
+            {!soloLectura && checkinPendiente && (
+              <span
+                title={`Disponible desde las ${horaDisponibleCheckin(cita.fechaHora)} (${MINUTOS_ANTES_CHECKIN} min antes del turno)`}
+                className="p-1.5 rounded bg-gray-50 text-gray-400 cursor-not-allowed inline-flex"
+              >
+                <Send className="w-4 h-4" />
+              </span>
             )}
             {!soloLectura && ['PROGRAMADA', 'CONFIRMADA'].includes(cita.estado) && (
               <>
