@@ -349,6 +349,10 @@ export default function CitaFormModal({ cita, onClose, onSuccess }) {
                     Ocupado
                   </span>
                   <span className="inline-flex items-center gap-1">
+                    <span className="w-3 h-3 rounded bg-orange-100 border border-orange-400" />
+                    Bloqueado
+                  </span>
+                  <span className="inline-flex items-center gap-1">
                     <span className="w-3 h-3 rounded bg-gray-100 border border-gray-300" />
                     Pasado
                   </span>
@@ -375,6 +379,8 @@ export default function CitaFormModal({ cita, onClose, onSuccess }) {
                         classes += selected
                           ? ' bg-green-600 text-white border-green-700 ring-2 ring-green-300'
                           : ' bg-green-100 text-green-800 border-green-500 hover:bg-green-200'
+                      } else if (slot.bloqueado) {
+                        classes += ' bg-orange-100 text-orange-800 border-orange-400 cursor-not-allowed opacity-80'
                       } else if (slot.ocupado) {
                         classes += ' bg-red-100 text-red-700 border-red-300 cursor-not-allowed opacity-80'
                       } else {
@@ -391,9 +397,11 @@ export default function CitaFormModal({ cita, onClose, onSuccess }) {
                           title={
                             slot.disponible
                               ? `Disponible (${slot.slotMinutos} min)`
-                              : slot.ocupado
-                                ? 'Ocupado'
-                                : 'Horario pasado'
+                              : slot.bloqueado
+                                ? 'Bloqueado'
+                                : slot.ocupado
+                                  ? 'Ocupado'
+                                  : 'Horario pasado'
                           }
                         >
                           {slot.hora}

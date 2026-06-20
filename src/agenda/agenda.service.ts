@@ -29,6 +29,7 @@ export interface SlotDisponibilidad {
   disponible: boolean;
   ocupado: boolean;
   pasado: boolean;
+  bloqueado: boolean;
 }
 
 const DIAS_NOMBRE = [
@@ -143,25 +144,62 @@ export class AgendaService {
     });
   }
 
-  async agregarBloqueo(medicoId: number, fecha: string, motivo?: string) {
+  async agregarBloqueo(
+    medicoId: number,
+    fecha: string,
+    motivo?: string,
+    horaInicio?: string,
+    horaFin?: string,
+  ) {
     await this.assertMedico(medicoId);
     const fechaDate = this.parseFechaLocal(fecha);
 
-    return this.prisma.bloqueoAgenda.upsert({
-      where: {
-        medicoId_fecha: { medicoId, fecha: fechaDate },
+    const tieneRango = !!(horaInicio || horaFin);
+    if (tieneRango) {
+      if (!horaInicio || !horaFin) {
+        throw new BadRequestException(
+          'Para bloquear un rango horario indique hora de inicio y fin',
+        );
+      }
+      if (!this.horaMenorQue(horaInicio, horaFin)) {
+        throw new BadRequestException(
+          'La hora de inicio debe ser anterior a la de fin',
+        );
+      }
+    }
+
+    const existentes = await this.getBloqueosDelDia(medicoId, fecha);
+
+    if (!tieneRango) {
+      if (this.esDiaCompletoBloqueado(existentes)) {
+        throw new BadRequestException('Ese día ya está bloqueado por completo');
+      }
+    } else if (this.esDiaCompletoBloqueado(existentes)) {
+      throw new BadRequestException('Ese día ya está bloqueado por completo');
+    } else if (
+      this.rangoSolapaBloqueos(fecha, horaInicio!, horaFin!, existentes)
+    ) {
+      throw new BadRequestException(
+        'El rango horario se superpone con otro bloqueo existente',
+      );
+    }
+
+    return this.prisma.bloqueoAgenda.create({
+      data: {
+        medicoId,
+        fecha: fechaDate,
+        horaInicio: tieneRango ? horaInicio : null,
+        horaFin: tieneRango ? horaFin : null,
+        motivo,
       },
-      create: { medicoId, fecha: fechaDate, motivo },
-      update: { motivo },
     });
   }
 
-  async eliminarBloqueo(medicoId: number, fecha: string) {
+  async eliminarBloqueo(medicoId: number, bloqueoId: number) {
     await this.assertMedico(medicoId);
-    const fechaDate = this.parseFechaLocal(fecha);
 
-    const bloqueo = await this.prisma.bloqueoAgenda.findUnique({
-      where: { medicoId_fecha: { medicoId, fecha: fechaDate } },
+    const bloqueo = await this.prisma.bloqueoAgenda.findFirst({
+      where: { id: bloqueoId, medicoId },
     });
 
     if (!bloqueo) {
@@ -175,12 +213,60 @@ export class AgendaService {
     return { ok: true };
   }
 
-  async estaBloqueado(medicoId: number, fecha: Date): Promise<boolean> {
-    const fechaDate = this.parseFechaLocal(this.formatFechaLocal(fecha));
-    const bloqueo = await this.prisma.bloqueoAgenda.findUnique({
-      where: { medicoId_fecha: { medicoId, fecha: fechaDate } },
+  async getBloqueosDelDia(medicoId: number, fecha: string) {
+    const fechaDate = this.parseFechaLocal(fecha);
+    return this.prisma.bloqueoAgenda.findMany({
+      where: { medicoId, fecha: fechaDate },
+      orderBy: [{ horaInicio: 'asc' }, { id: 'asc' }],
     });
-    return !!bloqueo;
+  }
+
+  esDiaCompletoBloqueado(
+    bloqueos: { horaInicio: string | null; horaFin: string | null }[],
+  ): boolean {
+    return bloqueos.some((b) => !b.horaInicio && !b.horaFin);
+  }
+
+  slotSolapaBloqueo(
+    slot: Date,
+    duracionMinutos: number,
+    fecha: string,
+    bloqueos: { horaInicio: string | null; horaFin: string | null }[],
+  ): boolean {
+    if (this.esDiaCompletoBloqueado(bloqueos)) return true;
+
+    const finSlot = new Date(slot.getTime() + duracionMinutos * 60 * 1000);
+    for (const b of bloqueos) {
+      if (!b.horaInicio || !b.horaFin) continue;
+      const inicio = parseDateTimeConsultorio(fecha, b.horaInicio);
+      const fin = parseDateTimeConsultorio(fecha, b.horaFin);
+      if (slot < fin && finSlot > inicio) return true;
+    }
+    return false;
+  }
+
+  async estaBloqueado(medicoId: number, fecha: Date): Promise<boolean> {
+    const fechaStr = this.formatFechaLocal(fecha);
+    const bloqueos = await this.getBloqueosDelDia(medicoId, fechaStr);
+    return this.esDiaCompletoBloqueado(bloqueos);
+  }
+
+  private rangoSolapaBloqueos(
+    fecha: string,
+    horaInicio: string,
+    horaFin: string,
+    bloqueos: { horaInicio: string | null; horaFin: string | null }[],
+  ): boolean {
+    const inicioNuevo = parseDateTimeConsultorio(fecha, horaInicio);
+    const finNuevo = parseDateTimeConsultorio(fecha, horaFin);
+
+    for (const b of bloqueos) {
+      if (!b.horaInicio || !b.horaFin) continue;
+      const inicio = parseDateTimeConsultorio(fecha, b.horaInicio);
+      const fin = parseDateTimeConsultorio(fecha, b.horaFin);
+      if (inicioNuevo < fin && finNuevo > inicio) return true;
+    }
+    return false;
   }
 
   async getFranjasDelDia(
@@ -227,7 +313,8 @@ export class AgendaService {
     }
 
     const fechaBase = this.parseFechaLocal(fecha);
-    const bloqueado = await this.estaBloqueado(medicoId, fechaBase);
+    const bloqueosDia = await this.getBloqueosDelDia(medicoId, fecha);
+    const bloqueado = this.esDiaCompletoBloqueado(bloqueosDia);
 
     if (bloqueado) {
       return {
@@ -277,14 +364,21 @@ export class AgendaService {
       const duracion = franja?.slotMinutos ?? 20;
       const ocupado = this.solapaConAlguna(slot, duracion, citas);
       const pasado = slot < ahora;
+      const bloqueadoSlot = this.slotSolapaBloqueo(
+        slot,
+        duracion,
+        fecha,
+        bloqueosDia,
+      );
 
       return {
         hora: formatHoraConsultorio(slot),
         fechaHora: slot.toISOString(),
         slotMinutos: duracion,
-        disponible: !ocupado && !pasado,
+        disponible: !ocupado && !pasado && !bloqueadoSlot,
         ocupado,
         pasado,
+        bloqueado: bloqueadoSlot,
       };
     });
 

@@ -76,15 +76,17 @@ export class AgendaController {
       medicoId,
       dto.fecha,
       dto.motivo,
+      dto.horaInicio,
+      dto.horaFin,
     );
   }
 
-  @Delete('medicos/:medicoId/bloqueos/:fecha')
+  @Delete('medicos/:medicoId/bloqueos/:id')
   @Roles(Rol.ADMINISTRADOR)
   eliminarBloqueo(
     @Param('medicoId', ParseIntPipe) medicoId: number,
-    @Param('fecha') fecha: string,
+    @Param('id', ParseIntPipe) id: number,
   ) {
-    return this.agendaService.eliminarBloqueo(medicoId, fecha);
+    return this.agendaService.eliminarBloqueo(medicoId, id);
   }
 }

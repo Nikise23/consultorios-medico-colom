@@ -37,12 +37,11 @@ function formatFechaBloqueo(fecha) {
   })
 }
 
-function toDateInputValue(fecha) {
-  const d = new Date(fecha)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+function descripcionBloqueo(bloqueo) {
+  if (!bloqueo.horaInicio || !bloqueo.horaFin) {
+    return 'Día completo'
+  }
+  return `${bloqueo.horaInicio} – ${bloqueo.horaFin}`
 }
 
 export default function ConfigAgendaMedico({ medicos }) {
@@ -51,6 +50,9 @@ export default function ConfigAgendaMedico({ medicos }) {
   const [horarios, setHorarios] = useState([])
   const [bloqueoFecha, setBloqueoFecha] = useState('')
   const [bloqueoMotivo, setBloqueoMotivo] = useState('')
+  const [bloqueoDiaCompleto, setBloqueoDiaCompleto] = useState(true)
+  const [bloqueoHoraInicio, setBloqueoHoraInicio] = useState('12:00')
+  const [bloqueoHoraFin, setBloqueoHoraFin] = useState('18:30')
 
   const { data: agendaData, isLoading } = useQuery({
     queryKey: ['agenda', medicoId],
@@ -88,9 +90,12 @@ export default function ConfigAgendaMedico({ medicos }) {
       agregarBloqueoAgenda(medicoId, {
         fecha: bloqueoFecha,
         motivo: bloqueoMotivo || undefined,
+        ...(bloqueoDiaCompleto
+          ? {}
+          : { horaInicio: bloqueoHoraInicio, horaFin: bloqueoHoraFin }),
       }),
     onSuccess: () => {
-      toast.success('Día bloqueado')
+      toast.success(bloqueoDiaCompleto ? 'Día bloqueado' : 'Rango horario bloqueado')
       setBloqueoFecha('')
       setBloqueoMotivo('')
       queryClient.invalidateQueries(['agenda', medicoId])
@@ -99,7 +104,7 @@ export default function ConfigAgendaMedico({ medicos }) {
   })
 
   const eliminarBloqueoMutation = useMutation({
-    mutationFn: (fecha) => eliminarBloqueoAgenda(medicoId, fecha),
+    mutationFn: (bloqueoId) => eliminarBloqueoAgenda(medicoId, bloqueoId),
     onSuccess: () => {
       toast.success('Bloqueo eliminado')
       queryClient.invalidateQueries(['agenda', medicoId])
@@ -295,8 +300,11 @@ export default function ConfigAgendaMedico({ medicos }) {
           <div>
             <h3 className="font-medium text-gray-900 flex items-center gap-2 mb-3">
               <Ban className="w-4 h-4 text-red-500" />
-              Días bloqueados (no atiende)
+              Bloqueos de agenda
             </h3>
+            <p className="text-sm text-gray-500 mb-3">
+              Podés bloquear un día entero o solo un rango horario (ej. si el médico termina temprano).
+            </p>
 
             <div className="flex flex-wrap gap-3 items-end mb-4 p-3 bg-red-50 border border-red-100 rounded-lg">
               <div>
@@ -310,6 +318,32 @@ export default function ConfigAgendaMedico({ medicos }) {
                   onChange={(e) => setBloqueoFecha(e.target.value)}
                 />
               </div>
+              {!bloqueoDiaCompleto && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Desde
+                    </label>
+                    <input
+                      type="time"
+                      className="input text-sm"
+                      value={bloqueoHoraInicio}
+                      onChange={(e) => setBloqueoHoraInicio(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">
+                      Hasta
+                    </label>
+                    <input
+                      type="time"
+                      className="input text-sm"
+                      value={bloqueoHoraFin}
+                      onChange={(e) => setBloqueoHoraFin(e.target.value)}
+                    />
+                  </div>
+                </>
+              )}
               <div className="flex-1 min-w-[180px]">
                 <label className="block text-xs font-medium text-gray-600 mb-1">
                   Motivo (opcional)
@@ -317,16 +351,31 @@ export default function ConfigAgendaMedico({ medicos }) {
                 <input
                   type="text"
                   className="input w-full text-sm"
-                  placeholder="Ej: vacaciones, congreso..."
+                  placeholder="Ej: vacaciones, congreso, termina temprano..."
                   value={bloqueoMotivo}
                   onChange={(e) => setBloqueoMotivo(e.target.value)}
                 />
               </div>
+              <label className="flex items-center gap-2 text-sm pb-2">
+                <input
+                  type="checkbox"
+                  checked={bloqueoDiaCompleto}
+                  onChange={(e) => setBloqueoDiaCompleto(e.target.checked)}
+                />
+                Día completo
+              </label>
               <button
                 type="button"
                 onClick={() => {
                   if (!bloqueoFecha) {
                     toast.error('Seleccioná una fecha')
+                    return
+                  }
+                  if (
+                    !bloqueoDiaCompleto &&
+                    bloqueoHoraInicio >= bloqueoHoraFin
+                  ) {
+                    toast.error('La hora de inicio debe ser anterior a la de fin')
                     return
                   }
                   agregarBloqueoMutation.mutate()
@@ -335,12 +384,12 @@ export default function ConfigAgendaMedico({ medicos }) {
                 className="btn btn-secondary inline-flex items-center text-sm"
               >
                 <Ban className="w-4 h-4 mr-1" />
-                Bloquear día
+                {bloqueoDiaCompleto ? 'Bloquear día' : 'Bloquear horario'}
               </button>
             </div>
 
             {!agenda?.bloqueos?.length ? (
-              <p className="text-sm text-gray-500">No hay días bloqueados.</p>
+              <p className="text-sm text-gray-500">No hay bloqueos configurados.</p>
             ) : (
               <ul className="space-y-2">
                 {agenda.bloqueos.map((b) => (
@@ -352,6 +401,9 @@ export default function ConfigAgendaMedico({ medicos }) {
                       <p className="font-medium text-gray-900 capitalize">
                         {formatFechaBloqueo(b.fecha)}
                       </p>
+                      <p className="text-sm text-primary-700 font-medium">
+                        {descripcionBloqueo(b)}
+                      </p>
                       {b.motivo && (
                         <p className="text-sm text-gray-500">{b.motivo}</p>
                       )}
@@ -361,15 +413,15 @@ export default function ConfigAgendaMedico({ medicos }) {
                       onClick={() => {
                         if (
                           window.confirm(
-                            '¿Desbloquear este día y permitir turnos nuevamente?',
+                            '¿Eliminar este bloqueo y permitir turnos en ese horario?',
                           )
                         ) {
-                          eliminarBloqueoMutation.mutate(toDateInputValue(b.fecha))
+                          eliminarBloqueoMutation.mutate(b.id)
                         }
                       }}
                       className="text-sm text-red-600 hover:underline"
                     >
-                      Desbloquear
+                      Eliminar
                     </button>
                   </li>
                 ))}

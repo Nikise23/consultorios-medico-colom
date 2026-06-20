@@ -192,6 +192,6 @@ export const setHorariosMedico = (medicoId, data) =>
 export const agregarBloqueoAgenda = (medicoId, data) =>
   api.post(`/agenda/medicos/${medicoId}/bloqueos`, data)
 
-export const eliminarBloqueoAgenda = (medicoId, fecha) =>
-  api.delete(`/agenda/medicos/${medicoId}/bloqueos/${fecha}`)
+export const eliminarBloqueoAgenda = (medicoId, bloqueoId) =>
+  api.delete(`/agenda/medicos/${medicoId}/bloqueos/${bloqueoId}`)
 

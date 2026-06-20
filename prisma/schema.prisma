@@ -96,15 +96,16 @@ model HorarioMedico {
 }
 
 model BloqueoAgenda {
-  id        Int      @id @default(autoincrement())
-  medicoId  Int
-  fecha     DateTime @db.Date
-  motivo    String?
-  createdAt DateTime @default(now())
+  id         Int      @id @default(autoincrement())
+  medicoId   Int
+  fecha      DateTime @db.Date
+  horaInicio String?  // null = bloqueo de día completo
+  horaFin    String?
+  motivo     String?
+  createdAt  DateTime @default(now())
 
   medico Medico @relation(fields: [medicoId], references: [id], onDelete: Cascade)
 
-  @@unique([medicoId, fecha])
   @@index([medicoId, fecha])
   @@map("bloqueos_agenda")
 }

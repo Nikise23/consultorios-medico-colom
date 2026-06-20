@@ -138,6 +138,10 @@ export class PublicService {
       fecha,
       franjas,
     );
+    const bloqueosDia = await this.agendaService.getBloqueosDelDia(
+      medicoId,
+      fecha,
+    );
     const slots: string[] = [];
 
     for (const slot of candidatos) {
@@ -151,7 +155,13 @@ export class PublicService {
       const duracion = franja?.slotMinutos ?? 20;
 
       if (
-        this.agendaService.solapaConAlguna(slot, duracion, citas)
+        this.agendaService.solapaConAlguna(slot, duracion, citas) ||
+        this.agendaService.slotSolapaBloqueo(
+          slot,
+          duracion,
+          fecha,
+          bloqueosDia,
+        )
       ) {
         continue;
       }
