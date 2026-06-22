@@ -17,6 +17,10 @@ import {
 } from '../common/consultorio-time';
 import { PrismaService } from '../prisma/prisma.service';
 import { HorarioItemDto } from './dto/set-horarios.dto';
+import {
+  getAgendaEspecialidadFilter,
+  medicoEnAgenda,
+} from '../common/agenda-config';
 
 export interface FranjaHoraria {
   horaInicio: string;
@@ -507,6 +511,12 @@ export class AgendaService {
     });
     if (!medico) {
       throw new NotFoundException(`Médico ${medicoId} no encontrado`);
+    }
+    const filtro = getAgendaEspecialidadFilter();
+    if (filtro && !medicoEnAgenda(medico.especialidad)) {
+      throw new BadRequestException(
+        `La agenda solo admite médicos de ${filtro}`,
+      );
     }
     return medico;
   }
