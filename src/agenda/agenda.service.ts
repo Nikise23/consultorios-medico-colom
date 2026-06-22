@@ -8,10 +8,12 @@ import {
   diaSemanaConsultorio,
   finDelDiaConsultorio,
   formatFechaConsultorio,
+  formatFechaDb,
   formatHoraConsultorio,
   inicioDelDiaConsultorio,
   parseDateTimeConsultorio,
   parseFechaConsultorio,
+  parseFechaDb,
 } from '../common/consultorio-time';
 import { PrismaService } from '../prisma/prisma.service';
 import { HorarioItemDto } from './dto/set-horarios.dto';
@@ -60,7 +62,26 @@ export class AgendaService {
       }),
     ]);
 
-    return { medicoId, horarios, bloqueos };
+    return {
+      medicoId,
+      horarios,
+      bloqueos: bloqueos.map((b) => this.serializarBloqueo(b)),
+    };
+  }
+
+  private serializarBloqueo(b: {
+    id: number;
+    medicoId: number;
+    fecha: Date;
+    horaInicio: string | null;
+    horaFin: string | null;
+    motivo: string | null;
+    createdAt: Date;
+  }) {
+    return {
+      ...b,
+      fecha: formatFechaDb(b.fecha),
+    };
   }
 
   async getHorariosPublicos(medicoId: number) {
@@ -134,14 +155,16 @@ export class AgendaService {
 
     if (desde || hasta) {
       where.fecha = {};
-      if (desde) where.fecha.gte = this.parseFechaLocal(desde);
-      if (hasta) where.fecha.lte = this.parseFechaLocal(hasta);
+      if (desde) where.fecha.gte = parseFechaDb(desde);
+      if (hasta) where.fecha.lte = parseFechaDb(hasta);
     }
 
-    return this.prisma.bloqueoAgenda.findMany({
+    const bloqueos = await this.prisma.bloqueoAgenda.findMany({
       where,
       orderBy: { fecha: 'asc' },
     });
+
+    return bloqueos.map((b) => this.serializarBloqueo(b));
   }
 
   async agregarBloqueo(
@@ -152,7 +175,7 @@ export class AgendaService {
     horaFin?: string,
   ) {
     await this.assertMedico(medicoId);
-    const fechaDate = this.parseFechaLocal(fecha);
+    const fechaDate = parseFechaDb(fecha);
 
     const tieneRango = !!(horaInicio || horaFin);
     if (tieneRango) {
@@ -184,7 +207,7 @@ export class AgendaService {
       );
     }
 
-    return this.prisma.bloqueoAgenda.create({
+    const bloqueo = await this.prisma.bloqueoAgenda.create({
       data: {
         medicoId,
         fecha: fechaDate,
@@ -193,6 +216,8 @@ export class AgendaService {
         motivo,
       },
     });
+
+    return this.serializarBloqueo(bloqueo);
   }
 
   async eliminarBloqueo(medicoId: number, bloqueoId: number) {
@@ -214,7 +239,7 @@ export class AgendaService {
   }
 
   async getBloqueosDelDia(medicoId: number, fecha: string) {
-    const fechaDate = this.parseFechaLocal(fecha);
+    const fechaDate = parseFechaDb(fecha);
     return this.prisma.bloqueoAgenda.findMany({
       where: { medicoId, fecha: fechaDate },
       orderBy: [{ horaInicio: 'asc' }, { id: 'asc' }],

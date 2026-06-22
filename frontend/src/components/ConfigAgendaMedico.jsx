@@ -8,6 +8,7 @@ import {
   agregarBloqueoAgenda,
   eliminarBloqueoAgenda,
 } from '../services/api'
+import { TZ_ARGENTINA } from '../utils/formatFecha'
 
 const DIAS_SEMANA = [
   { value: 1, label: 'Lunes' },
@@ -28,8 +29,15 @@ const horarioVacio = () => ({
 })
 
 function formatFechaBloqueo(fecha) {
-  const d = new Date(fecha)
+  const key =
+    typeof fecha === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(fecha)
+      ? fecha
+      : null
+  const d = key
+    ? new Date(`${key}T12:00:00-03:00`)
+    : new Date(fecha)
   return d.toLocaleDateString('es-AR', {
+    timeZone: TZ_ARGENTINA,
     weekday: 'long',
     day: 'numeric',
     month: 'long',
