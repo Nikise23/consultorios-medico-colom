@@ -17,7 +17,7 @@ export default function Dashboard() {
   const getRoleDescription = (rol) => {
     const descriptions = {
       ADMINISTRADOR: 'Tienes acceso completo al sistema',
-      SECRETARIA: 'Gestiona pacientes y envía a sala de espera',
+      SECRETARIA: 'Gestiona pacientes, turnos y sala de espera',
       MEDICO: 'Atiende pacientes y crea historias clínicas',
     }
     return descriptions[rol] || ''
@@ -61,26 +61,26 @@ export default function Dashboard() {
           </div>
         )}
 
-        {user?.rol === 'ADMINISTRADOR' && (
+        {(user?.rol === 'SECRETARIA' || user?.rol === 'ADMINISTRADOR') && (
           <div className="card hover:shadow-lg transition-shadow">
             <div className="flex items-center">
               <div className="flex-shrink-0 bg-indigo-100 rounded-lg p-3">
                 <Calendar className="w-6 h-6 text-indigo-600" />
               </div>
-              <div className="ml-4">
+              <div className="ml-4 min-w-0">
                 <h3 className="text-lg font-medium text-gray-900">Agenda de Citas</h3>
                 <p className="text-sm text-gray-500">
-                  Prueba: solo visible para administrador
+                  Turnos, bloqueos y envío a sala de espera
                 </p>
               </div>
             </div>
             <div className="mt-4">
-              <a
-                href="/agenda"
+              <Link
+                to="/agenda"
                 className="text-primary-600 hover:text-primary-700 font-medium text-sm"
               >
                 Ir a la agenda →
-              </a>
+              </Link>
             </div>
           </div>
         )}

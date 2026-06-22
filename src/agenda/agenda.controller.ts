@@ -19,13 +19,15 @@ import { AgendaService } from './agenda.service';
 import { CreateBloqueoDto } from './dto/create-bloqueo.dto';
 import { SetHorariosDto } from './dto/set-horarios.dto';
 
+const ROLES_AGENDA = [Rol.ADMINISTRADOR, Rol.SECRETARIA] as const;
+
 @Controller('agenda')
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class AgendaController {
   constructor(private readonly agendaService: AgendaService) {}
 
   @Get('medicos/:medicoId/disponibilidad')
-  @Roles(Rol.ADMINISTRADOR)
+  @Roles(...ROLES_AGENDA)
   getDisponibilidad(
     @Param('medicoId', ParseIntPipe) medicoId: number,
     @Query('fecha') fecha: string,
@@ -42,13 +44,13 @@ export class AgendaController {
   }
 
   @Get('medicos/:medicoId')
-  @Roles(Rol.ADMINISTRADOR)
+  @Roles(...ROLES_AGENDA)
   getConfiguracion(@Param('medicoId', ParseIntPipe) medicoId: number) {
     return this.agendaService.getConfiguracion(medicoId);
   }
 
   @Put('medicos/:medicoId/horarios')
-  @Roles(Rol.ADMINISTRADOR)
+  @Roles(...ROLES_AGENDA)
   setHorarios(
     @Param('medicoId', ParseIntPipe) medicoId: number,
     @Body() dto: SetHorariosDto,
@@ -57,7 +59,7 @@ export class AgendaController {
   }
 
   @Get('medicos/:medicoId/bloqueos')
-  @Roles(Rol.ADMINISTRADOR)
+  @Roles(...ROLES_AGENDA)
   listarBloqueos(
     @Param('medicoId', ParseIntPipe) medicoId: number,
     @Query('desde') desde?: string,
@@ -67,7 +69,7 @@ export class AgendaController {
   }
 
   @Post('medicos/:medicoId/bloqueos')
-  @Roles(Rol.ADMINISTRADOR)
+  @Roles(...ROLES_AGENDA)
   agregarBloqueo(
     @Param('medicoId', ParseIntPipe) medicoId: number,
     @Body() dto: CreateBloqueoDto,
@@ -82,7 +84,7 @@ export class AgendaController {
   }
 
   @Delete('medicos/:medicoId/bloqueos/:id')
-  @Roles(Rol.ADMINISTRADOR)
+  @Roles(...ROLES_AGENDA)
   eliminarBloqueo(
     @Param('medicoId', ParseIntPipe) medicoId: number,
     @Param('id', ParseIntPipe) id: number,

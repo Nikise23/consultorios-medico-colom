@@ -76,7 +76,7 @@ function App() {
         <Route
           path="agenda"
           element={
-            <RoleRoute allowedRoles={['ADMINISTRADOR']}>
+            <RoleRoute allowedRoles={['ADMINISTRADOR', 'SECRETARIA']}>
               <AgendaCitas />
             </RoleRoute>
           }

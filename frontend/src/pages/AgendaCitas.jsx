@@ -281,11 +281,11 @@ export default function AgendaCitas() {
   }
 
   return (
-    <div className="px-4 py-4 sm:py-6 sm:px-0">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+    <div>
+      <div className="flex flex-col gap-4 mb-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Calendar className="w-8 h-8 text-primary-600" />
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <Calendar className="w-7 h-7 sm:w-8 sm:h-8 text-primary-600 flex-shrink-0" />
             Agenda de Citas
           </h1>
           <p className="mt-1 text-sm text-gray-600">
@@ -299,7 +299,7 @@ export default function AgendaCitas() {
               setCitaEdit(null)
               setShowForm(true)
             }}
-            className="btn btn-primary inline-flex items-center"
+            className="btn btn-primary inline-flex items-center justify-center w-full sm:w-auto"
           >
             <Plus className="w-4 h-4 mr-2" />
             Nuevo turno
@@ -388,7 +388,7 @@ export default function AgendaCitas() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button type="submit" className="btn btn-primary inline-flex items-center">
+            <button type="submit" className="btn btn-primary inline-flex items-center justify-center flex-1 sm:flex-none min-w-[120px]">
               <Search className="w-4 h-4 mr-2" />
               Buscar
             </button>
@@ -396,7 +396,7 @@ export default function AgendaCitas() {
               <button
                 type="button"
                 onClick={limpiarBusqueda}
-                className="btn btn-secondary inline-flex items-center"
+                className="btn btn-secondary inline-flex items-center justify-center flex-1 sm:flex-none min-w-[120px]"
               >
                 <X className="w-4 h-4 mr-2" />
                 Ver agenda semanal
@@ -415,16 +415,17 @@ export default function AgendaCitas() {
           </p>
         </div>
       ) : (
-        <div className="card mb-6 flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
+        <div className="card mb-6 flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 sm:gap-4">
+          <div className="flex items-center justify-between sm:justify-start gap-1 sm:gap-2 w-full sm:w-auto">
             <button
               type="button"
-              className="p-2 rounded hover:bg-gray-100"
+              className="p-2 rounded hover:bg-gray-100 flex-shrink-0"
               onClick={() => setSemanaBase(addDays(semanaBase, -7))}
+              aria-label="Semana anterior"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <span className="text-sm font-medium min-w-[200px] text-center">
+            <span className="text-xs sm:text-sm font-medium text-center flex-1 sm:flex-none sm:min-w-[200px] px-1">
               {semanaBase.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })} —{' '}
               {finSemana.toLocaleDateString('es-AR', {
                 day: 'numeric',
@@ -434,14 +435,15 @@ export default function AgendaCitas() {
             </span>
             <button
               type="button"
-              className="p-2 rounded hover:bg-gray-100"
+              className="p-2 rounded hover:bg-gray-100 flex-shrink-0"
               onClick={() => setSemanaBase(addDays(semanaBase, 7))}
+              aria-label="Semana siguiente"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
             <button
               type="button"
-              className="text-sm text-primary-600 ml-2"
+              className="text-sm text-primary-600 px-2 py-1 rounded hover:bg-primary-50 flex-shrink-0"
               onClick={() => setSemanaBase(startOfWeek(new Date()))}
             >
               Hoy
@@ -449,7 +451,7 @@ export default function AgendaCitas() {
           </div>
           {!soloLectura && (
             <select
-              className="input max-w-xs"
+              className="input w-full sm:max-w-xs sm:ml-auto"
               value={medicoFiltro}
               onChange={(e) => setMedicoFiltro(e.target.value)}
             >
@@ -498,7 +500,7 @@ export default function AgendaCitas() {
                 ))}
               </div>
             )}
-            <ul className="space-y-1.5 max-w-3xl">
+            <ul className="space-y-1.5 w-full">
             {citas.map((c) => (
               <CitaCardItem
                 key={c.id}
@@ -515,7 +517,7 @@ export default function AgendaCitas() {
           </>
         )
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
           {Object.entries(citasPorDia).map(([diaKey, citasDia]) => {
             const fecha = new Date(diaKey + 'T12:00:00')
             const esHoy = diaKey === new Date().toISOString().slice(0, 10)
