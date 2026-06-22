@@ -11,8 +11,7 @@ import {
   getDisponibilidadAgenda,
 } from '../services/api'
 import { getTipoNotificacion } from '../utils/citaNotificaciones'
-import { formatFechaHora24, formatHora24 } from '../utils/formatFecha'
-import { AGENDA_ESPECIALIDAD } from '../config/agenda'
+import { formatFechaHora24 } from '../utils/formatFecha'
 import PacienteForm from './PacienteForm'
 
 const DIAS_LABEL = {
@@ -55,8 +54,8 @@ export default function CitaFormModal({ cita, onClose, onSuccess }) {
   })
 
   const { data: medicosData } = useQuery({
-    queryKey: ['medicos', AGENDA_ESPECIALIDAD],
-    queryFn: () => getMedicos(AGENDA_ESPECIALIDAD || undefined),
+    queryKey: ['medicos'],
+    queryFn: () => getMedicos(),
   })
   const medicos = medicosData?.data || []
 
@@ -405,7 +404,7 @@ export default function CitaFormModal({ cita, onClose, onSuccess }) {
                                   : 'Horario pasado'
                           }
                         >
-                          {formatHora24(slot.fechaHora)}
+                          {slot.hora}
                         </button>
                       )
                     })}

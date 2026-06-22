@@ -9,10 +9,6 @@ import { UpdateCitaDto } from './dto/update-cita.dto';
 import { SearchCitaDto } from './dto/search-cita.dto';
 import { EstadoCita, Prisma } from '@prisma/client';
 import { NotificacionesCitaService } from './notificaciones-cita.service';
-import {
-  getAgendaEspecialidadFilter,
-  medicoEnAgenda,
-} from '../common/agenda-config';
 
 const includeRelaciones = {
   paciente: true,
@@ -26,31 +22,6 @@ export class CitasService {
     private prisma: PrismaService,
     private notificaciones: NotificacionesCitaService,
   ) {}
-
-  private async assertMedicoEnAgenda(medicoId: number) {
-    const filtro = getAgendaEspecialidadFilter();
-    if (!filtro) return;
-
-    const medico = await this.prisma.medico.findUnique({
-      where: { id: medicoId },
-      select: { especialidad: true, activo: true },
-    });
-    if (!medico?.activo || !medicoEnAgenda(medico.especialidad)) {
-      throw new BadRequestException(
-        `La agenda solo admite médicos de ${filtro}`,
-      );
-    }
-  }
-
-  private filtroMedicosAgenda(): Prisma.CitaWhereInput | undefined {
-    const filtro = getAgendaEspecialidadFilter();
-    if (!filtro) return undefined;
-    return {
-      medico: {
-        especialidad: { equals: filtro, mode: 'insensitive' },
-      },
-    };
-  }
 
   private finCita(fechaHora: Date, duracionMinutos: number): Date {
     return new Date(fechaHora.getTime() + duracionMinutos * 60 * 1000);
@@ -99,8 +70,6 @@ export class CitasService {
       throw new NotFoundException(`Médico ${dto.medicoId} no encontrado`);
     }
 
-    await this.assertMedicoEnAgenda(dto.medicoId);
-
     const fechaHora = new Date(dto.fechaHora);
     const duracion = dto.duracionMinutos ?? 20;
 
@@ -134,16 +103,11 @@ export class CitasService {
 
   async findAll(query: SearchCitaDto, medicoIdFiltro?: number) {
     const where: Prisma.CitaWhereInput = {};
-    const filtroAgenda = this.filtroMedicosAgenda();
 
     if (medicoIdFiltro) {
       where.medicoId = medicoIdFiltro;
     } else if (query.medicoId) {
       where.medicoId = query.medicoId;
-    }
-
-    if (filtroAgenda) {
-      where.AND = [...(where.AND ? (Array.isArray(where.AND) ? where.AND : [where.AND]) : []), filtroAgenda];
     }
 
     if (query.pacienteId) where.pacienteId = query.pacienteId;
@@ -200,10 +164,6 @@ export class CitasService {
     const medicoId = dto.medicoId ?? cita.medicoId;
     const fechaHora = dto.fechaHora ? new Date(dto.fechaHora) : cita.fechaHora;
     const duracion = dto.duracionMinutos ?? cita.duracionMinutos;
-
-    if (dto.medicoId) {
-      await this.assertMedicoEnAgenda(medicoId);
-    }
 
     if (dto.fechaHora || dto.medicoId || dto.duracionMinutos) {
       await this.validarSolapamiento(medicoId, fechaHora, duracion, id);

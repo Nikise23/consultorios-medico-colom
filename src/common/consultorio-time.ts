@@ -39,15 +39,12 @@ export function formatFechaConsultorio(d: Date): string {
 }
 
 export function formatHoraConsultorio(d: Date): string {
-  const parts = new Intl.DateTimeFormat('es-AR', {
+  return new Intl.DateTimeFormat('es-AR', {
     timeZone: CONSULTORIO_TZ,
     hour: '2-digit',
     minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(d);
-  const hour = parts.find((p) => p.type === 'hour')?.value?.padStart(2, '0') ?? '00';
-  const minute = parts.find((p) => p.type === 'minute')?.value?.padStart(2, '0') ?? '00';
-  return `${hour}:${minute}`;
+    hour12: false,
+  }).format(d);
 }
 
 /** Fecha completa + hora 24h (emails y notificaciones al paciente). */

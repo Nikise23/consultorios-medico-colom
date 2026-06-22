@@ -26,7 +26,6 @@ import ResumenDiaAgenda from '../components/ResumenDiaAgenda'
 import { normalizeApiList } from '../utils/normalizeApiList'
 import { calcularResumenDia } from '../utils/citaAgenda'
 import { fechaKeyArgentina } from '../utils/formatFecha'
-import { AGENDA_ESPECIALIDAD } from '../config/agenda'
 
 function startOfWeek(d) {
   const date = new Date(d)
@@ -95,8 +94,8 @@ export default function AgendaCitas() {
   const finSemana = addDays(semanaBase, 6)
 
   const { data: medicosData } = useQuery({
-    queryKey: ['medicos', AGENDA_ESPECIALIDAD],
-    queryFn: () => getMedicos(AGENDA_ESPECIALIDAD || undefined),
+    queryKey: ['medicos'],
+    queryFn: () => getMedicos(),
   })
   const medicos = normalizeApiList(medicosData)
 
@@ -291,11 +290,6 @@ export default function AgendaCitas() {
           </h1>
           <p className="mt-1 text-sm text-gray-600">
             Vista semanal o búsqueda de turnos para editar, cancelar o enviar a sala de espera.
-            {AGENDA_ESPECIALIDAD && (
-              <span className="block mt-1 text-primary-700">
-                Solo {AGENDA_ESPECIALIDAD}
-              </span>
-            )}
           </p>
         </div>
         {!soloLectura && (

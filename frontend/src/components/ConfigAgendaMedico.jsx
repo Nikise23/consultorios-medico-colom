@@ -9,7 +9,6 @@ import {
   eliminarBloqueoAgenda,
 } from '../services/api'
 import { TZ_ARGENTINA } from '../utils/formatFecha'
-import { AGENDA_ESPECIALIDAD } from '../config/agenda'
 
 const DIAS_SEMANA = [
   { value: 1, label: 'Lunes' },
@@ -238,11 +237,8 @@ export default function ConfigAgendaMedico({ medicos }) {
                         Desde
                       </label>
                       <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]{2}:[0-9]{2}"
-                        placeholder="09:00"
-                        className="input w-full text-sm font-mono"
+                        type="time"
+                        className="input w-full text-sm"
                         value={h.horaInicio}
                         onChange={(e) =>
                           actualizarHorario(index, 'horaInicio', e.target.value)
@@ -254,11 +250,8 @@ export default function ConfigAgendaMedico({ medicos }) {
                         Hasta
                       </label>
                       <input
-                        type="text"
-                        inputMode="numeric"
-                        pattern="[0-9]{2}:[0-9]{2}"
-                        placeholder="12:00"
-                        className="input w-full text-sm font-mono"
+                        type="time"
+                        className="input w-full text-sm"
                         value={h.horaFin}
                         onChange={(e) =>
                           actualizarHorario(index, 'horaFin', e.target.value)
@@ -319,11 +312,6 @@ export default function ConfigAgendaMedico({ medicos }) {
             </h3>
             <p className="text-sm text-gray-500 mb-3">
               Podés bloquear un día entero o solo un rango horario (ej. si el médico termina temprano).
-              {AGENDA_ESPECIALIDAD && (
-                <span className="block mt-1 text-primary-700">
-                  Solo profesionales de {AGENDA_ESPECIALIDAD}
-                </span>
-              )}
             </p>
 
             <div className="flex flex-wrap gap-3 items-end mb-4 p-3 bg-red-50 border border-red-100 rounded-lg">
@@ -345,11 +333,8 @@ export default function ConfigAgendaMedico({ medicos }) {
                       Desde
                     </label>
                     <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]{2}:[0-9]{2}"
-                      placeholder="12:00"
-                      className="input text-sm font-mono"
+                      type="time"
+                      className="input text-sm"
                       value={bloqueoHoraInicio}
                       onChange={(e) => setBloqueoHoraInicio(e.target.value)}
                     />
@@ -359,11 +344,8 @@ export default function ConfigAgendaMedico({ medicos }) {
                       Hasta
                     </label>
                     <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]{2}:[0-9]{2}"
-                      placeholder="18:30"
-                      className="input text-sm font-mono"
+                      type="time"
+                      className="input text-sm"
                       value={bloqueoHoraFin}
                       onChange={(e) => setBloqueoHoraFin(e.target.value)}
                     />
