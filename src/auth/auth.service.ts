@@ -56,6 +56,13 @@ export class AuthService {
           apellido: usuario.apellido,
           rol: usuario.rol,
           tema: usuario.tema,
+          medico: usuario.medico
+            ? {
+                id: usuario.medico.id,
+                usaAgenda: usuario.medico.usaAgenda,
+                especialidad: usuario.medico.especialidad,
+              }
+            : null,
         },
       };
     } catch (error) {

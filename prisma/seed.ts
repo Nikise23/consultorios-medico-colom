@@ -49,6 +49,11 @@ async function aplicarHorariosMedico(
     `✅ Horarios aplicados a Dr. ${medico.usuario.nombre} ${medico.usuario.apellido} (${medico.usuario.email})`,
   );
 
+  await prisma.medico.update({
+    where: { id: medico.id },
+    data: { usaAgenda: true },
+  });
+
   return medico;
 }
 

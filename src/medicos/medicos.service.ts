@@ -5,10 +5,11 @@ import { PrismaService } from '../prisma/prisma.service';
 export class MedicosService {
   constructor(private prisma: PrismaService) {}
 
-  async findAll() {
+  async findAll(usaAgenda?: boolean) {
     return this.prisma.medico.findMany({
       where: {
         activo: true,
+        ...(usaAgenda ? { usaAgenda: true } : {}),
       },
       include: {
         usuario: {

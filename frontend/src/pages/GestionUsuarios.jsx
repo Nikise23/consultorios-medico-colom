@@ -17,6 +17,7 @@ export default function GestionUsuarios() {
     apellido: '',
     matricula: '',
     especialidad: '',
+    usaAgenda: false,
     activo: true,
   })
 
@@ -41,6 +42,7 @@ export default function GestionUsuarios() {
         apellido: '',
         matricula: '',
         especialidad: '',
+        usaAgenda: false,
         activo: true,
       })
       toast.success('Usuario creado exitosamente')
@@ -70,6 +72,7 @@ export default function GestionUsuarios() {
         apellido: '',
         matricula: '',
         especialidad: '',
+        usaAgenda: false,
         activo: true,
       })
       toast.success('Usuario actualizado exitosamente')
@@ -108,12 +111,13 @@ export default function GestionUsuarios() {
     setEditingUsuario(usuario)
     setFormData({
       email: usuario.email,
-      password: '', // No mostrar contraseña
+      password: '',
       rol: usuario.rol,
       nombre: usuario.nombre,
       apellido: usuario.apellido,
       matricula: usuario.medico?.matricula || '',
       especialidad: usuario.medico?.especialidad || '',
+      usaAgenda: usuario.medico?.usaAgenda ?? false,
       activo: usuario.activo,
     })
     setShowForm(true)
@@ -169,6 +173,7 @@ export default function GestionUsuarios() {
       if (especialidadTrimmed) {
         dataToSend.especialidad = especialidadTrimmed
       }
+      dataToSend.usaAgenda = !!formData.usaAgenda
     }
 
     console.log('Enviando datos:', dataToSend)
@@ -191,6 +196,7 @@ export default function GestionUsuarios() {
       apellido: '',
       matricula: '',
       especialidad: '',
+      usaAgenda: false,
       activo: true,
     })
   }
@@ -288,6 +294,11 @@ export default function GestionUsuarios() {
                           </span>
                           <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded w-fit">
                             {usuario.medico.especialidad}
+                            {usuario.medico.usaAgenda && (
+                              <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                                Agenda
+                              </span>
+                            )}
                           </span>
                         </div>
                       ) : (
@@ -367,6 +378,11 @@ export default function GestionUsuarios() {
                             </span>
                             <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded">
                               {usuario.medico.especialidad}
+                            {usuario.medico.usaAgenda && (
+                              <span className="ml-2 text-xs px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800">
+                                Agenda
+                              </span>
+                            )}
                             </span>
                           </>
                         )}
@@ -537,8 +553,27 @@ export default function GestionUsuarios() {
                       value={formData.especialidad}
                       onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })}
                       className="input"
-                      placeholder="Ej: Clínica Médica, Cardiología, etc."
+                      placeholder="Ej: Oftalmología"
                     />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="flex items-start gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        className="mt-1"
+                        checked={formData.usaAgenda}
+                        onChange={(e) =>
+                          setFormData({ ...formData, usaAgenda: e.target.checked })
+                        }
+                      />
+                      <span>
+                        <span className="font-medium text-gray-900">Usa agenda de turnos</span>
+                        <span className="block text-gray-500 text-xs mt-0.5">
+                          Habilita ver sus turnos y bloquear días u horarios (solo su propia agenda).
+                        </span>
+                      </span>
+                    </label>
                   </div>
                 </>
               )}

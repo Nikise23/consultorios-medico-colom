@@ -1,4 +1,4 @@
-import { IsEmail, IsString, IsEnum, IsOptional, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString, MinLength } from 'class-validator';
 import { Rol } from '@prisma/client';
 
 export class UpdateUsuarioDto {
@@ -26,6 +26,10 @@ export class UpdateUsuarioDto {
   @IsString()
   @IsOptional()
   especialidad?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  usaAgenda?: boolean;
 
   @IsString()
   @IsOptional()

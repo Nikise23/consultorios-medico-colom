@@ -61,7 +61,9 @@ export default function Dashboard() {
           </div>
         )}
 
-        {(user?.rol === 'SECRETARIA' || user?.rol === 'ADMINISTRADOR') && (
+        {(user?.rol === 'SECRETARIA' ||
+          user?.rol === 'ADMINISTRADOR' ||
+          (user?.rol === 'MEDICO' && user?.medico?.usaAgenda)) && (
           <div className="card hover:shadow-lg transition-shadow">
             <div className="flex items-center">
               <div className="flex-shrink-0 bg-indigo-100 rounded-lg p-3">
@@ -70,7 +72,9 @@ export default function Dashboard() {
               <div className="ml-4 min-w-0">
                 <h3 className="text-lg font-medium text-gray-900">Agenda de Citas</h3>
                 <p className="text-sm text-gray-500">
-                  Turnos, bloqueos y envío a sala de espera
+                  {user?.rol === 'MEDICO'
+                    ? 'Tus turnos y bloqueos de agenda'
+                    : 'Turnos, bloqueos y envío a sala de espera'}
                 </p>
               </div>
             </div>

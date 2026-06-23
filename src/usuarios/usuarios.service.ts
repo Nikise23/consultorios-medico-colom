@@ -89,6 +89,7 @@ export class UsuariosService {
             usuarioId: usuario.id,
             matricula: createUsuarioDto.matricula!,
             especialidad: createUsuarioDto.especialidad!,
+            usaAgenda: createUsuarioDto.usaAgenda ?? false,
           },
         });
 
@@ -143,7 +144,11 @@ export class UsuariosService {
 
       // Si se está cambiando a médico o ya es médico
       if (updateUsuarioDto.rol === Rol.MEDICO || usuario.rol === Rol.MEDICO) {
-        if (updateUsuarioDto.matricula || updateUsuarioDto.especialidad) {
+        if (
+          updateUsuarioDto.matricula ||
+          updateUsuarioDto.especialidad ||
+          updateUsuarioDto.usaAgenda !== undefined
+        ) {
           // Verificar matrícula si se está cambiando
           if (updateUsuarioDto.matricula && usuario.medico?.matricula !== updateUsuarioDto.matricula) {
             const medicoExistente = await this.prisma.medico.findUnique({
@@ -167,6 +172,9 @@ export class UsuariosService {
                 data: {
                   matricula: updateUsuarioDto.matricula || usuario.medico.matricula,
                   especialidad: updateUsuarioDto.especialidad || usuario.medico.especialidad,
+                  ...(updateUsuarioDto.usaAgenda !== undefined
+                    ? { usaAgenda: updateUsuarioDto.usaAgenda }
+                    : {}),
                 },
               });
             } else if (updateUsuarioDto.matricula && updateUsuarioDto.especialidad) {
@@ -175,6 +183,7 @@ export class UsuariosService {
                   usuarioId: id,
                   matricula: updateUsuarioDto.matricula,
                   especialidad: updateUsuarioDto.especialidad,
+                  usaAgenda: updateUsuarioDto.usaAgenda ?? false,
                 },
               });
             }
@@ -198,13 +207,27 @@ export class UsuariosService {
     if (updateUsuarioDto.password) dataToUpdate.password = updateUsuarioDto.password;
     if (updateUsuarioDto.activo !== undefined) dataToUpdate.activo = updateUsuarioDto.activo;
 
-    return this.prisma.usuario.update({
+    const usuarioActualizado = await this.prisma.usuario.update({
       where: { id },
       data: dataToUpdate,
       include: {
         medico: true,
       },
     });
+
+    if (
+      usuarioActualizado.medico &&
+      updateUsuarioDto.usaAgenda !== undefined &&
+      usuarioActualizado.rol === Rol.MEDICO
+    ) {
+      await this.prisma.medico.update({
+        where: { id: usuarioActualizado.medico.id },
+        data: { usaAgenda: updateUsuarioDto.usaAgenda },
+      });
+      return this.findOne(id);
+    }
+
+    return usuarioActualizado;
   }
 
   async changePassword(userId: number, changePasswordDto: ChangePasswordDto) {

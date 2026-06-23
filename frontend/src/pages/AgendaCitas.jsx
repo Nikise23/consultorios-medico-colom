@@ -64,10 +64,12 @@ const ESTADOS_BUSQUEDA = [
 
 export default function AgendaCitas() {
   const { user } = useAuth()
-  const soloLectura = user?.rol === 'MEDICO'
+  const esMedicoAgenda = user?.rol === 'MEDICO' && user?.medico?.usaAgenda
+  const soloLectura = esMedicoAgenda
+  const medicoIdPropio = esMedicoAgenda ? String(user.medico.id) : ''
   const queryClient = useQueryClient()
   const [semanaBase, setSemanaBase] = useState(() => startOfWeek(new Date()))
-  const [medicoFiltro, setMedicoFiltro] = useState('')
+  const [medicoFiltro, setMedicoFiltro] = useState(medicoIdPropio)
   const [showForm, setShowForm] = useState(false)
   const [citaEdit, setCitaEdit] = useState(null)
   const [citaCheckin, setCitaCheckin] = useState(null)
@@ -94,8 +96,8 @@ export default function AgendaCitas() {
   const finSemana = addDays(semanaBase, 6)
 
   const { data: medicosData } = useQuery({
-    queryKey: ['medicos'],
-    queryFn: () => getMedicos(),
+    queryKey: ['medicos', 'agenda'],
+    queryFn: () => getMedicos({ usaAgenda: true }),
   })
   const medicos = normalizeApiList(medicosData)
 
@@ -103,9 +105,11 @@ export default function AgendaCitas() {
     () => ({
       desde: toISOStart(semanaBase),
       hasta: toISOEnd(finSemana),
-      ...(medicoFiltro ? { medicoId: medicoFiltro } : {}),
+      ...(medicoFiltro || medicoIdPropio
+        ? { medicoId: medicoFiltro || medicoIdPropio }
+        : {}),
     }),
-    [semanaBase, finSemana, medicoFiltro],
+    [semanaBase, finSemana, medicoFiltro, medicoIdPropio],
   )
 
   const { data: citasSemanaData, isLoading: loadingSemana } = useQuery({
@@ -228,7 +232,11 @@ export default function AgendaCitas() {
     }
     const params = {}
     if (t) params.busqueda = t
-    if (searchDraft.medicoId) params.medicoId = searchDraft.medicoId
+    if (esMedicoAgenda) {
+      params.medicoId = medicoIdPropio
+    } else if (searchDraft.medicoId) {
+      params.medicoId = searchDraft.medicoId
+    }
     if (searchDraft.estado) params.estado = searchDraft.estado
     if (searchDraft.desde) params.desde = new Date(searchDraft.desde).toISOString()
     if (searchDraft.hasta) {
@@ -289,7 +297,9 @@ export default function AgendaCitas() {
             Agenda de Citas
           </h1>
           <p className="mt-1 text-sm text-gray-600">
-            Vista semanal o búsqueda de turnos para editar, cancelar o enviar a sala de espera.
+            {esMedicoAgenda
+              ? 'Consultá tus turnos y bloqueá días u horarios cuando no atiendas.'
+              : 'Vista semanal o búsqueda de turnos para editar, cancelar o enviar a sala de espera.'}
           </p>
         </div>
         {!soloLectura && (
@@ -307,7 +317,13 @@ export default function AgendaCitas() {
         )}
       </div>
 
-      {!soloLectura && <ConfigAgendaMedico medicos={medicos} />}
+      {(esMedicoAgenda || !soloLectura) && (
+        <ConfigAgendaMedico
+          medicos={medicos}
+          soloBloqueos={esMedicoAgenda}
+          medicoIdFijo={medicoIdPropio}
+        />
+      )}
 
       {/* Búsqueda de turnos */}
       <div className="card mb-6">
@@ -335,7 +351,8 @@ export default function AgendaCitas() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Médico</label>
               <select
                 className="input w-full"
-                value={searchDraft.medicoId}
+                value={esMedicoAgenda ? medicoIdPropio : searchDraft.medicoId}
+                disabled={esMedicoAgenda}
                 onChange={(e) =>
                   setSearchDraft({ ...searchDraft, medicoId: e.target.value })
                 }
@@ -449,7 +466,7 @@ export default function AgendaCitas() {
               Hoy
             </button>
           </div>
-          {!soloLectura && (
+          {!soloLectura && !esMedicoAgenda && (
             <select
               className="input w-full sm:max-w-xs sm:ml-auto"
               value={medicoFiltro}

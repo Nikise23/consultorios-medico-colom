@@ -69,6 +69,11 @@ export class CitasService {
     if (!medico) {
       throw new NotFoundException(`Médico ${dto.medicoId} no encontrado`);
     }
+    if (!medico.usaAgenda) {
+      throw new BadRequestException(
+        'Este profesional no tiene agenda de turnos habilitada',
+      );
+    }
 
     const fechaHora = new Date(dto.fechaHora);
     const duracion = dto.duracionMinutos ?? 20;
@@ -101,13 +106,20 @@ export class CitasService {
     return cita;
   }
 
-  async findAll(query: SearchCitaDto, medicoIdFiltro?: number) {
+  async findAll(
+    query: SearchCitaDto,
+    options?: { medicoId?: number; soloMedicosConAgenda?: boolean },
+  ) {
     const where: Prisma.CitaWhereInput = {};
 
-    if (medicoIdFiltro) {
-      where.medicoId = medicoIdFiltro;
+    if (options?.medicoId) {
+      where.medicoId = options.medicoId;
     } else if (query.medicoId) {
       where.medicoId = query.medicoId;
+    }
+
+    if (options?.soloMedicosConAgenda) {
+      where.medico = { usaAgenda: true, activo: true };
     }
 
     if (query.pacienteId) where.pacienteId = query.pacienteId;

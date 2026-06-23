@@ -12,11 +12,14 @@ export class MedicosController {
 
   @Get()
   @Roles(Rol.SECRETARIA, Rol.ADMINISTRADOR, Rol.MEDICO)
-  async findAll(@Query('especialidad') especialidad?: string) {
+  async findAll(
+    @Query('especialidad') especialidad?: string,
+    @Query('usaAgenda') usaAgenda?: string,
+  ) {
     if (especialidad) {
       return this.medicosService.findByEspecialidad(especialidad);
     }
-    return this.medicosService.findAll();
+    return this.medicosService.findAll(usaAgenda === 'true');
   }
 
   @Get(':id')

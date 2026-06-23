@@ -39,6 +39,23 @@ function RoleRoute({ children, allowedRoles }) {
   return children
 }
 
+function AgendaRoute({ children }) {
+  const { user } = useAuth()
+
+  if (user?.rol === 'MEDICO') {
+    if (!user?.medico?.usaAgenda) {
+      return <Navigate to="/dashboard" replace />
+    }
+    return children
+  }
+
+  if (user?.rol === 'ADMINISTRADOR' || user?.rol === 'SECRETARIA') {
+    return children
+  }
+
+  return <Navigate to="/dashboard" replace />
+}
+
 function App() {
   return (
     <Routes>
@@ -76,9 +93,9 @@ function App() {
         <Route
           path="agenda"
           element={
-            <RoleRoute allowedRoles={['ADMINISTRADOR', 'SECRETARIA']}>
+            <AgendaRoute>
               <AgendaCitas />
-            </RoleRoute>
+            </AgendaRoute>
           }
         />
         

@@ -52,9 +52,13 @@ function descripcionBloqueo(bloqueo) {
   return `${bloqueo.horaInicio} – ${bloqueo.horaFin}`
 }
 
-export default function ConfigAgendaMedico({ medicos }) {
+export default function ConfigAgendaMedico({
+  medicos,
+  soloBloqueos = false,
+  medicoIdFijo = '',
+}) {
   const queryClient = useQueryClient()
-  const [medicoId, setMedicoId] = useState('')
+  const [medicoId, setMedicoId] = useState(medicoIdFijo || '')
   const [horarios, setHorarios] = useState([])
   const [bloqueoFecha, setBloqueoFecha] = useState('')
   const [bloqueoMotivo, setBloqueoMotivo] = useState('')
@@ -71,7 +75,11 @@ export default function ConfigAgendaMedico({ medicos }) {
   const agenda = agendaData?.data || agendaData
 
   useEffect(() => {
-    if (agenda?.horarios) {
+    if (medicoIdFijo) setMedicoId(medicoIdFijo)
+  }, [medicoIdFijo])
+
+  useEffect(() => {
+    if (agenda?.horarios && !soloBloqueos) {
       setHorarios(
         agenda.horarios.map((h) => ({
           diaSemana: h.diaSemana,
@@ -140,9 +148,10 @@ export default function ConfigAgendaMedico({ medicos }) {
     <div className="card mb-6">
       <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2 mb-4">
         <Clock className="w-5 h-5 text-primary-600" />
-        Horarios y bloqueos por profesional
+        {soloBloqueos ? 'Bloqueos de mi agenda' : 'Horarios y bloqueos por profesional'}
       </h2>
 
+      {!soloBloqueos && (
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Profesional
@@ -160,10 +169,13 @@ export default function ConfigAgendaMedico({ medicos }) {
           ))}
         </select>
       </div>
+      )}
 
       {!medicoId ? (
         <p className="text-sm text-gray-500">
-          Elegí un profesional para ver o modificar sus días y horarios de atención.
+          {soloBloqueos
+            ? 'No se pudo cargar su perfil de médico.'
+            : 'Elegí un profesional para ver o modificar sus días y horarios de atención.'}
         </p>
       ) : isLoading ? (
         <div className="py-8 text-center">
@@ -171,6 +183,7 @@ export default function ConfigAgendaMedico({ medicos }) {
         </div>
       ) : (
         <div className="space-y-8">
+          {!soloBloqueos && (
           <div>
             <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
               <h3 className="font-medium text-gray-900">
@@ -304,6 +317,7 @@ export default function ConfigAgendaMedico({ medicos }) {
               </div>
             )}
           </div>
+          )}
 
           <div>
             <h3 className="font-medium text-gray-900 flex items-center gap-2 mb-3">

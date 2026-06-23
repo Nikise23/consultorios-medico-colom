@@ -75,14 +75,19 @@ export default function Layout() {
       { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard', roles: ['ADMINISTRADOR', 'SECRETARIA', 'MEDICO'] },
       { to: '/secretaria', icon: Users, label: 'Secretaria', roles: ['SECRETARIA', 'ADMINISTRADOR'] },
       { to: '/pagos', icon: DollarSign, label: 'Pagos', roles: ['SECRETARIA', 'ADMINISTRADOR'] },
-      { to: '/agenda', icon: Calendar, label: 'Agenda', roles: ['SECRETARIA', 'ADMINISTRADOR'] },
+      { to: '/agenda', icon: Calendar, label: 'Agenda', roles: ['SECRETARIA', 'ADMINISTRADOR'], medicoAgenda: true },
       { to: '/medico', icon: Stethoscope, label: 'Médico', roles: ['MEDICO', 'ADMINISTRADOR'] },
       { to: '/historias-clinicas', icon: FileText, label: 'Historias', roles: ['MEDICO', 'ADMINISTRADOR'] },
       { to: '/reportes-pagos', icon: DollarSign, label: 'Reportes', roles: ['MEDICO', 'ADMINISTRADOR', 'SECRETARIA'] },
       { to: '/usuarios', icon: UserPlus, label: 'Usuarios', roles: ['ADMINISTRADOR'] },
     ]
-    return links.filter((l) => l.roles.includes(user?.rol))
-  }, [user?.rol])
+    return links.filter((link) => {
+      if (link.medicoAgenda && user?.rol === 'MEDICO') {
+        return !!user?.medico?.usaAgenda
+      }
+      return link.roles.includes(user?.rol)
+    })
+  }, [user?.rol, user?.medico?.usaAgenda])
 
   const closeMobile = () => setMobileOpen(false)
 

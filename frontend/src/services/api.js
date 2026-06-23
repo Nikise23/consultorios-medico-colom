@@ -74,8 +74,15 @@ export const getProfile = () =>
   api.get('/usuarios/profile')
 
 // Médicos
-export const getMedicos = (especialidad) => {
-  const params = especialidad ? { especialidad } : {}
+export const getMedicos = (options) => {
+  const params = {}
+  if (typeof options === 'string') {
+    params.especialidad = options
+  } else if (options?.usaAgenda) {
+    params.usaAgenda = 'true'
+  } else if (options?.especialidad) {
+    params.especialidad = options.especialidad
+  }
   return api.get('/medicos', { params })
 }
 
