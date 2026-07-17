@@ -7,34 +7,45 @@ import {
   IsString,
   Max,
   Min,
+  ValidateIf,
 } from 'class-validator';
 
 export class ReservarTurnoDto {
   @IsString()
-  @IsNotEmpty()
-  dni: string;
+  @IsOptional()
+  pacienteToken?: string;
 
   @IsString()
+  @ValidateIf((o: ReservarTurnoDto) => !o.pacienteToken)
   @IsNotEmpty()
-  nombre: string;
+  dni?: string;
 
   @IsString()
+  @ValidateIf((o: ReservarTurnoDto) => !o.pacienteToken)
   @IsNotEmpty()
-  apellido: string;
+  nombre?: string;
 
   @IsString()
+  @ValidateIf((o: ReservarTurnoDto) => !o.pacienteToken)
   @IsNotEmpty()
-  obraSocial: string;
+  apellido?: string;
 
   @IsString()
+  @ValidateIf((o: ReservarTurnoDto) => !o.pacienteToken)
   @IsNotEmpty()
-  telefono: string;
+  obraSocial?: string;
+
+  @IsString()
+  @ValidateIf((o: ReservarTurnoDto) => !o.pacienteToken)
+  @IsNotEmpty()
+  telefono?: string;
 
   @IsEmail()
   @IsOptional()
   email?: string;
 
   @IsDateString()
+  @ValidateIf((o: ReservarTurnoDto) => !o.pacienteToken)
   @IsOptional()
   fechaNacimiento?: string;
 

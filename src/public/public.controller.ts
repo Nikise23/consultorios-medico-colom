@@ -12,6 +12,7 @@ import {
 import { Request } from 'express';
 import { Public } from '../auth/decorators/public.decorator';
 import { ReservarTurnoDto } from './dto/reservar-turno.dto';
+import { ValidarPacienteDto } from './dto/validar-paciente.dto';
 import { PublicService } from './public.service';
 
 @Public()
@@ -45,12 +46,21 @@ export class PublicController {
     return this.publicService.disponibilidad(id, fecha);
   }
 
+  @Post('pacientes/validar')
+  validarPaciente(@Body() dto: ValidarPacienteDto, @Req() req: Request) {
+    return this.publicService.validarPaciente(dto, this.getClientKey(req));
+  }
+
   @Post('turnos/reservar')
   reservar(@Body() dto: ReservarTurnoDto, @Req() req: Request) {
-    const clientKey =
+    return this.publicService.reservar(dto, this.getClientKey(req));
+  }
+
+  private getClientKey(req: Request): string {
+    return (
       (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
       req.ip ||
-      'unknown';
-    return this.publicService.reservar(dto, clientKey);
+      'unknown'
+    );
   }
 }
