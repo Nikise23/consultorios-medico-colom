@@ -68,7 +68,7 @@ export class NotificacionesCitaService {
 
     emailEnviado = await this.enviarEmail({
       to: email,
-      subject: `Turno confirmado - Consultorios Dres. Colom`,
+      subject: `Turno confirmado — Consultorios Colom · Oftalmología`,
       html: this.buildEmailHtml(cita, medicoNombre, fecha, calendario),
       text: this.buildEmailText(cita, medicoNombre, fecha, calendario),
       attachments: [
@@ -227,48 +227,103 @@ export class NotificacionesCitaService {
     fecha: string,
     cal: CalendarioEmailData,
   ): string {
-    const motivoLine = cita.motivo
-      ? `<li><strong>Motivo:</strong> ${this.escapeHtml(cita.motivo)}</li>`
+    const logoUrl =
+      this.config.get<string>('PUBLIC_SITE_URL')?.replace(/\/$/, '') ||
+      'https://www.colomoftalmologia.com.ar';
+    const logoSrc = `${logoUrl}/logo.png`;
+    const especialidad = cita.medico.especialidad
+      ? ` (${this.escapeHtml(cita.medico.especialidad)})`
+      : '';
+    const motivoRow = cita.motivo
+      ? `<tr>
+            <td style="padding:10px 0;border-bottom:1px solid #e8e4dc;color:#5a6a7a;font-size:14px;width:140px;">Motivo</td>
+            <td style="padding:10px 0;border-bottom:1px solid #e8e4dc;color:#051626;font-size:14px;font-weight:600;">${this.escapeHtml(cita.motivo)}</td>
+          </tr>`
       : '';
 
     return `
-      <div style="font-family:Arial,sans-serif;max-width:560px;color:#111;">
-        <h2 style="color:#1d4ed8;">Confirmación de turno</h2>
-        <p>Hola <strong>${this.escapeHtml(cita.paciente.nombre)} ${this.escapeHtml(cita.paciente.apellido)}</strong>,</p>
-        <p>Su turno ha sido confirmado:</p>
-        <ul>
-          <li><strong>Fecha y hora:</strong> ${this.escapeHtml(fecha)}</li>
-          <li><strong>Médico:</strong> ${this.escapeHtml(medicoNombre)}${cita.medico.especialidad ? ` (${this.escapeHtml(cita.medico.especialidad)})` : ''}</li>
-          <li><strong>Duración estimada:</strong> ${cita.duracionMinutos} minutos</li>
-          ${motivoLine}
-          <li><strong>Lugar:</strong> ${this.escapeHtml(cal.ubicacion)}</li>
-        </ul>
-
-        <p style="margin-top:24px;margin-bottom:12px;"><strong>Agregar a su calendario:</strong></p>
-        <table cellpadding="0" cellspacing="0" role="presentation">
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" /></head>
+<body style="margin:0;padding:0;background:#f0ebe3;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f0ebe3;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #ddd4c8;">
           <tr>
-            <td style="padding-right:8px;padding-bottom:8px;">
-              <a href="${cal.googleUrl}" target="_blank" rel="noopener"
-                style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:bold;font-size:14px;">
-                📅 Google Calendar
-              </a>
+            <td style="background:#051626;padding:28px 32px;text-align:center;">
+              <img src="${logoSrc}" alt="Consultorios Colom" width="72" height="72" style="display:block;margin:0 auto 14px;border-radius:8px;border:0;" />
+              <div style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:0.02em;">Consultorios Colom</div>
+              <div style="font-size:13px;font-weight:600;color:#d4af37;margin-top:4px;letter-spacing:0.08em;text-transform:uppercase;">Oftalmología</div>
             </td>
-            <td style="padding-right:8px;padding-bottom:8px;">
-              <a href="${cal.outlookUrl}" target="_blank" rel="noopener"
-                style="display:inline-block;background:#0078d4;color:#fff;text-decoration:none;padding:12px 20px;border-radius:6px;font-weight:bold;font-size:14px;">
-                📅 Outlook
-              </a>
+          </tr>
+          <tr>
+            <td style="padding:28px 32px 8px;">
+              <h1 style="margin:0 0 8px;font-size:20px;color:#051626;">Turno confirmado</h1>
+              <p style="margin:0 0 20px;font-size:15px;line-height:1.5;color:#4a6078;">
+                Hola <strong style="color:#051626;">${this.escapeHtml(cita.paciente.nombre)} ${this.escapeHtml(cita.paciente.apellido)}</strong>,
+                su turno fue reservado correctamente.
+              </p>
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#faf6eb;border-radius:8px;padding:4px 16px;">
+                <tr>
+                  <td style="padding:10px 0;border-bottom:1px solid #e8e4dc;color:#5a6a7a;font-size:14px;width:140px;">Fecha y hora</td>
+                  <td style="padding:10px 0;border-bottom:1px solid #e8e4dc;color:#051626;font-size:14px;font-weight:600;">${this.escapeHtml(fecha)}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0;border-bottom:1px solid #e8e4dc;color:#5a6a7a;font-size:14px;">Médico</td>
+                  <td style="padding:10px 0;border-bottom:1px solid #e8e4dc;color:#051626;font-size:14px;font-weight:600;">${this.escapeHtml(medicoNombre)}${especialidad}</td>
+                </tr>
+                <tr>
+                  <td style="padding:10px 0;border-bottom:1px solid #e8e4dc;color:#5a6a7a;font-size:14px;">Duración</td>
+                  <td style="padding:10px 0;border-bottom:1px solid #e8e4dc;color:#051626;font-size:14px;font-weight:600;">${cita.duracionMinutos} minutos</td>
+                </tr>
+                ${motivoRow}
+                <tr>
+                  <td style="padding:10px 0;color:#5a6a7a;font-size:14px;">Lugar</td>
+                  <td style="padding:10px 0;color:#051626;font-size:14px;font-weight:600;">${this.escapeHtml(cal.ubicacion)}</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px 8px;">
+              <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#051626;">Agregar a su calendario</p>
+              <table role="presentation" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding-right:8px;padding-bottom:8px;">
+                    <a href="${cal.googleUrl}" target="_blank" rel="noopener"
+                      style="display:inline-block;background:#051626;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:6px;font-weight:bold;font-size:13px;">
+                      Google Calendar
+                    </a>
+                  </td>
+                  <td style="padding-bottom:8px;">
+                    <a href="${cal.outlookUrl}" target="_blank" rel="noopener"
+                      style="display:inline-block;background:#d4af37;color:#051626;text-decoration:none;padding:11px 18px;border-radius:6px;font-weight:bold;font-size:13px;">
+                      Outlook
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:8px 0 0;font-size:12px;line-height:1.45;color:#6b7c8d;">
+                También puede abrir el archivo adjunto <strong>turno-consultorio.ics</strong> (iPhone, Android, Apple Calendar).
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px 28px;">
+              <p style="margin:0;font-size:13px;color:#4a6078;">Por favor llegue unos minutos antes del horario indicado.</p>
+              <p style="margin:16px 0 0;padding-top:16px;border-top:1px solid #e8e4dc;font-size:12px;color:#8fa3b8;line-height:1.5;">
+                <strong style="color:#051626;">Consultorios Colom — Oftalmología</strong><br />
+                ${this.escapeHtml(cal.ubicacion)}
+              </p>
             </td>
           </tr>
         </table>
-        <p style="font-size:13px;color:#555;margin-top:12px;">
-          También puede abrir el archivo adjunto <strong>turno-consultorio.ics</strong> (iPhone, Android, Apple Calendar, etc.).
-        </p>
-
-        <p style="margin-top:24px;">Consultorios Médicos Dres. Colom</p>
-        <p style="color:#666;font-size:12px;">Por favor llegue unos minutos antes del horario indicado.</p>
-      </div>
-    `;
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
   }
 
   private buildEmailText(
@@ -278,12 +333,14 @@ export class NotificacionesCitaService {
     cal: CalendarioEmailData,
   ): string {
     return [
+      'Consultorios Colom — Oftalmología',
       'Confirmación de turno',
       '',
       `Hola ${cita.paciente.nombre} ${cita.paciente.apellido},`,
+      'Su turno fue reservado correctamente.',
       '',
       `Fecha: ${fecha}`,
-      `Médico: ${medicoNombre}`,
+      `Médico: ${medicoNombre}${cita.medico.especialidad ? ` (${cita.medico.especialidad})` : ''}`,
       `Duración: ${cita.duracionMinutos} min`,
       cita.motivo ? `Motivo: ${cita.motivo}` : '',
       `Lugar: ${cal.ubicacion}`,
@@ -294,7 +351,8 @@ export class NotificacionesCitaService {
       '',
       'También adjuntamos el archivo turno-consultorio.ics',
       '',
-      'Consultorios Médicos Dres. Colom',
+      'Por favor llegue unos minutos antes del horario indicado.',
+      'Consultorios Colom — Oftalmología',
     ]
       .filter((line) => line !== '')
       .join('\n');

@@ -10,6 +10,7 @@ import { MedicosModule } from './medicos/medicos.module';
 import { CitasModule } from './citas/citas.module';
 import { PublicModule } from './public/public.module';
 import { AgendaModule } from './agenda/agenda.module';
+import { BackupModule } from './backup/backup.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AppController } from './app.controller';
 
@@ -29,6 +30,7 @@ import { AppController } from './app.controller';
     CitasModule,
     PublicModule,
     AgendaModule,
+    BackupModule,
   ],
   controllers: [AppController],
 })

@@ -1,9 +1,45 @@
+import { useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
-import { LayoutDashboard, Users, Stethoscope, FileText, DollarSign, Calendar } from 'lucide-react'
+import { Users, Stethoscope, FileText, DollarSign, Calendar, Download, UserPlus } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import toast from 'react-hot-toast'
+import { descargarBackup } from '../services/api'
 
 export default function Dashboard() {
   const { user } = useAuth()
+  const [backupLoading, setBackupLoading] = useState(false)
+
+  const handleBackup = async () => {
+    if (backupLoading) return
+    const ok = window.confirm(
+      'Se descargará un archivo con todos los datos del sistema (pacientes, historias, turnos, pagos, usuarios). Guardalo en un lugar seguro. ¿Continuar?',
+    )
+    if (!ok) return
+
+    setBackupLoading(true)
+    try {
+      const response = await descargarBackup()
+      const disposition = response.headers['content-disposition'] || ''
+      const match = disposition.match(/filename="?([^"]+)"?/)
+      const filename =
+        match?.[1] || `backup-consultorios-colom-${new Date().toISOString().slice(0, 10)}.json`
+      const blob = new Blob([response.data], { type: 'application/json' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      window.URL.revokeObjectURL(url)
+      toast.success('Backup descargado correctamente')
+    } catch (error) {
+      console.error(error)
+      toast.error(error.response?.data?.message || 'No se pudo generar el backup')
+    } finally {
+      setBackupLoading(false)
+    }
+  }
 
   const getRoleName = (rol) => {
     const roles = {
@@ -163,6 +199,58 @@ export default function Dashboard() {
               >
                 Ver reportes →
               </Link>
+            </div>
+          </div>
+        )}
+
+        {user?.rol === 'ADMINISTRADOR' && (
+          <div className="card hover:shadow-lg transition-shadow">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 bg-violet-100 rounded-lg p-3">
+                <UserPlus className="w-6 h-6 text-violet-600" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-lg font-medium text-gray-900">Usuarios</h3>
+                <p className="text-sm text-gray-500">
+                  Alta y gestión de cuentas del sistema
+                </p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <Link
+                to="/usuarios"
+                className="text-primary-600 hover:text-primary-700 font-medium text-sm"
+              >
+                Ir a usuarios →
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {user?.rol === 'ADMINISTRADOR' && (
+          <div className="card hover:shadow-lg transition-shadow border border-amber-200 bg-amber-50/40">
+            <div className="flex items-center">
+              <div className="flex-shrink-0 bg-amber-100 rounded-lg p-3">
+                <Download className="w-6 h-6 text-amber-700" />
+              </div>
+              <div className="ml-4 min-w-0">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Backup del sistema
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Descarga un respaldo JSON de todos los datos
+                </p>
+              </div>
+            </div>
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={handleBackup}
+                disabled={backupLoading}
+                className="text-amber-800 hover:text-amber-900 font-medium text-sm disabled:opacity-60"
+              >
+                {backupLoading ? 'Generando backup…' : 'Descargar backup →'}
+              </button>
             </div>
           </div>
         )}

@@ -202,3 +202,10 @@ export const agregarBloqueoAgenda = (medicoId, data) =>
 export const eliminarBloqueoAgenda = (medicoId, bloqueoId) =>
   api.delete(`/agenda/medicos/${medicoId}/bloqueos/${bloqueoId}`)
 
+// Backup (solo administrador)
+export const descargarBackup = () =>
+  api.get('/backup/exportar', {
+    responseType: 'blob',
+    timeout: 120000,
+  })
+

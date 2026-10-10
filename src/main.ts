@@ -84,6 +84,7 @@ async function bootstrap() {
         '/pagos',
         '/citas',
         '/public',
+        '/backup',
         '/health',
       ];
 
